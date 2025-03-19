@@ -8,7 +8,8 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Secure session key
 
 DATABASE = 'database.db'
-CSV_FILE = r'C:\Users\Javie\Desktop\CMPSC 431W - Ph2\NittanyBusinessDataset_v3\Users.csv'  # Adjust as needed
+PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE = os.path.join(PARENT_DIR, "NittanyBusinessDataset", "Users.csv")
 
 
 def create_user_table():
