@@ -41,7 +41,7 @@ def populate_users():
     with open(CSV_FILE, newline='', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            email = row.get('email', '').strip()
+            email = row.get('\ufeffemail', '').strip()
             password = row.get('password', '').strip()
             hashed_password = hash_password(password)  # Hash it before storing
 
