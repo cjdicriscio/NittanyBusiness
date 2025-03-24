@@ -6,30 +6,34 @@ Nittany Business is an online ecommerce application built with Flask and SQLite.
 
 ## Project Structure
 
-|=NITTANYBUSINESS  
-|  
-|==NittanyBusinessDataset  
-|---📄Address.csv  
-|---📄Buyers.csv  
-|---📄Categories.csv  
-|---📄Credit_Cards.csv  
-|---📄Helpdesk.csv  
-|---📄Orders.csv  
-|---📄Product_Listings.csv  
-|---📄Requests.csv  
-|---📄Reviews.csv  
-|---📄Sellers.csv  
-|---📄Users.csv  
-|---📄Zipcode_Info.csv  
-|  
-|==templates  
-|---📝index.html  
-|---📝input.html  
-|---📝login.html  
-|  
-|--🐍app.py  
-|--🗃️database.db  
-|--📑README.md  
+NITTANYBUSINESS  
+│  
+├── NittanyBusinessDataset  
+│   ├── 📄 Address.csv  
+│   ├── 📄 Buyers.csv  
+│   ├── 📄 Categories.csv  
+│   ├── 📄 Credit_Cards.csv  
+│   ├── 📄 Helpdesk.csv  
+│   ├── 📄 Orders.csv  
+│   ├── 📄 Product_Listings.csv  
+│   ├── 📄 Requests.csv  
+│   ├── 📄 Reviews.csv  
+│   ├── 📄 Sellers.csv  
+│   ├── 📄 Users.csv  
+│   ├── 📄 Zipcode_Info.csv  
+│  
+├── templates  
+│   ├── 📝 index.html  
+│   ├── 📝 input.html  
+│   ├── 📝 login.html  
+│  
+├── 🐍 app.py  
+├── 🗃️ database.db  
+├── 📑 README.md    
+
+
+## Functionality 
+Users can log into the NittanyBusiness website using a login page. Users enter their email and password, then the entered credentials are checked against the database of credentials to ensure the account exists and the password is correct.
 
 ## Setup
 
