@@ -213,6 +213,7 @@ def create_reviews_table():
 
 #------------------------------------------------------------------------------
 # Populate Tables
+# - Parse CSV files and populate the data into the respective tables
 #------------------------------------------------------------------------------
 
 def hash_password(password):
@@ -242,14 +243,12 @@ def populate_users():
     connection.commit()
     connection.close()
 
-
-
-
 if __name__ == "__main__":
     # Delete old database to ensure proper password hashing
     if os.path.exists(DATABASE):
         os.remove(DATABASE)
 
+    # Call the table creation functions
     create_user_table()
     create_helpdesk_table()
     create_requests_table()
@@ -262,4 +261,7 @@ if __name__ == "__main__":
     create_productlistings_table()  
     create_orders_table()
     create_reviews_table()
+    
+
+    # Call the table population functions
     populate_users()
