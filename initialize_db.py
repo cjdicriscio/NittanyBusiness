@@ -44,11 +44,13 @@ def create_requests_table():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Requests (
             request_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender_email TEXT NOT NULL
-            helpdesk_staff_email TEXT NOT NULL
-            request_type TEXT NOT NULL
-            request_desc TEXT NOT NULL
-            request_status INTEGER NOT NULL
+            sender_email TEXT NOT NULL,
+            helpdesk_staff_email TEXT NOT NULL,
+            request_type TEXT NOT NULL,
+            request_desc TEXT NOT NULL,
+            request_status INTEGER NOT NULL,
+            FOREIGN KEY (sender_email) REFERENCES Users (email),
+            FOREIGN KEY (helpdesk_staff_email) REFERENCES Helpdesk (email)
         );
     ''')
     connection.commit()
@@ -61,10 +63,10 @@ def create_buyers_table():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Buyers (
             email TEXT PRIMARY KEY,
-            business_name TEXT NOT NULL
-            buyer_address_id TEXT NOT NULL
-            FOREIGN KEY email REFERENCES Users email
-            FOREIGN KEY buyer_address_id REFERENCES Address address_id
+            business_name TEXT NOT NULL,
+            buyer_address_id TEXT NOT NULL,
+            FOREIGN KEY (email) REFERENCES Users (email),
+            FOREIGN KEY (buyer_address_id) REFERENCES Address (address_id)
         );
     ''')
     connection.commit()
@@ -77,12 +79,12 @@ def create_creditcard_table():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS CreditCards (
             credit_card_num INTEGER PRIMARY KEY,
-            card_type TEXT NOT NULL
-            expire_month TEXT NOT NULL
-            expire_year TEXT NOT NULL
-            security_code INTEGER NOT NULL
-            owner_email TEXT NOT NULL
-            FOREIGN KEY owner_email REFERENCES Users email
+            card_type TEXT NOT NULL,
+            expire_month TEXT NOT NULL,
+            expire_year TEXT NOT NULL,
+            security_code INTEGER NOT NULL,
+            owner_email TEXT NOT NULL,
+            FOREIGN KEY (owner_email) REFERENCES Users (email)
         );
     ''')
     connection.commit()
@@ -95,10 +97,9 @@ def create_address_table():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Address (
             address_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            zipcode INTEGER NOT NULL
-            street_num INTEGER NOT NULL
+            zipcode INTEGER NOT NULL,
+            street_num INTEGER NOT NULL,
             street_name TEXT NOT NULL
-            FOREIGN KEY owner_email REFERENCES Users email
         );
     ''')
     connection.commit()
@@ -111,8 +112,9 @@ def create_zipcode_table():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Zipcode (
             zipcode INTEGER PRIMARY KEY,
-            city TEXT NOT NULL
-            state TEXT NOT NULL
+            city TEXT NOT NULL,
+            state TEXT NOT NULL,
+            FOREIGN KEY (zipcode) REFERENCES Address (zipcode)
         );
     ''')
     connection.commit()
@@ -125,13 +127,13 @@ def create_sellers_table():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Sellers (
             email TEXT PRIMARY KEY,
-            business_name TEXT NOT NULL
-            business_address_id TEXT NOT NULL
-            bank_routing_num INTEGER NOT NULL
-            bank_acct_num INTEGER NOT NULL
-            balance INTEGER NOT NULL
-            FOREIGN KEY email REFERENCES Users email
-            FOREIGN KEY business_address_id REFERENCES Address address_id
+            business_name TEXT NOT NULL,
+            business_address_id TEXT NOT NULL,
+            bank_routing_num INTEGER NOT NULL,
+            bank_acct_num INTEGER NOT NULL,
+            balance INTEGER NOT NULL,
+            FOREIGN KEY (email) REFERENCES Users (email),
+            FOREIGN KEY (business_address_id) REFERENCES Address (address_id)
         );
     ''')
     connection.commit()
@@ -143,9 +145,9 @@ def create_categories_table():
     cursor = connection.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Categories (
-            cat_name TEXT PRIMARY KEY
-            parent_cat TEXT
-            FOREIGN KEY parent_cat REFERENCES Categories cat_name
+            cat_name TEXT PRIMARY KEY,
+            parent_cat TEXT,
+            FOREIGN KEY (parent_cat) REFERENCES Categories (cat_name)
         );
     ''')
     connection.commit()
@@ -157,16 +159,17 @@ def create_productlistings_table():
     cursor = connection.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ProductListings (
-            seller_email TEXT PRIMARY KEY
-            listing_id INTEGER PRIMARY KEY AUTOINCREMENT
-            category TEXT NOT NULL
-            product_name TEXT NOT NULL
-            product_desc TEXT NOT NULL
-            quantity INTEGER NOT NULL
-            product_price INTEGER NOT NULL
-            status INTEGER NOT NULL
-            FOREIGN KEY seller_email REFERENCES Users email
-            FOREIGN KEY category REFERENCES Categories cat_name
+            seller_email TEXT,
+            listing_id INTEGER,
+            category TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            product_desc TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            product_price INTEGER NOT NULL,
+            status INTEGER NOT NULL,
+            PRIMARY KEY (seller_email, listing_id)
+            FOREIGN KEY (seller_email) REFERENCES Users (email),
+            FOREIGN KEY (category) REFERENCES Categories (cat_name)
         );
     ''')
     connection.commit()
@@ -178,31 +181,31 @@ def create_orders_table():
     cursor = connection.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Orders (
-            order_id INTEGER PRIMARY KEY AUTOINCREMENT
-            seller_email TEXT NOT NULL
-            buyer_email TEXT NOT NULL
-            listing_id INTEGER NOT NULL
-            date DATETIME NOT NULL
-            quantity INTEGER NOT NULL
-            payment INTEGER NOT NULL
-            FOREIGN KEY seller_email REFERENCES Sellers email
-            FOREIGN KEY buyer_email REFERENCES Buyers email
-            FOREIGN KEY listing_id REFERENCES ProductListings listing_id
+            order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            seller_email TEXT NOT NULL,
+            buyer_email TEXT NOT NULL,
+            listing_id INTEGER NOT NULL,
+            date DATETIME NOT NULL,
+            quantity INTEGER NOT NULL,
+            payment INTEGER NOT NULL,
+            FOREIGN KEY (seller_email) REFERENCES Sellers (email),
+            FOREIGN KEY (buyer_email) REFERENCES Buyers (email),
+            FOREIGN KEY (listing_id) REFERENCES ProductListings (listing_id)
         );
     ''')
     connection.commit()
     connection.close()
 
 # Reviews Table
-def create_orders_table():
+def create_reviews_table():
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Reviews (
-            order_id INTEGER PRIMARY KEY
-            review_desc TEXT
-            rating INTEGER NOT NULL
-            FOREIGN KEY order_id REFERENCES Orders order_id
+            order_id INTEGER PRIMARY KEY,
+            review_desc TEXT,
+            rating INTEGER NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES Orders (order_id)
         );
     ''')
     connection.commit()
@@ -248,5 +251,15 @@ if __name__ == "__main__":
         os.remove(DATABASE)
 
     create_user_table()
+    create_helpdesk_table()
+    create_requests_table()
+    create_buyers_table()
+    create_creditcard_table()
+    create_address_table()
+    create_zipcode_table()
+    create_sellers_table()
+    create_categories_table()
+    create_productlistings_table()  
+    create_orders_table()
+    create_reviews_table()
     populate_users()
-    app.run(debug=True)
