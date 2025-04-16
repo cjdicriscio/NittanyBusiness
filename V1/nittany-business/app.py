@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import sqlite3 as sql
 import os
+import hashlib
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
@@ -13,6 +14,12 @@ app.config['SQLALCHEMY_TRACK_CHANGES'] = False
 db = SQLAlchemy(app)
 
 Data = os.path.join(os.path.dirname(__file__), 'database.db')
+
+DATABASE = 'database.db'
+
+def hash_password(password):
+    """Hash the password using SHA-256."""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Sample routes to demonstrate template rendering
 @app.route('/')
@@ -29,12 +36,24 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        # For demonstration purposes
+        #demo credentials if no Database, remove in full ver.
         if email == 'demo@example.com' and password == 'password':
             session['user'] = {'name': 'Demo User', 'type': 'buyer'}
             return redirect(url_for('dashboard'))
+        
+        hashed_password = hash_password(password)
+
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
+        user = cursor.fetchone()
+        connection.close()
+
+        if user:
+            session['user'] = {'name': 'Demo User', 'type': 'buyer'}  # Store user session
+            return redirect(url_for('dashboard'))
         else:
-            message = 'Invalid email or password'
+            message = 'Invalid email or password.'
     
     return render_template('login.html', message=message, success=success)
 
