@@ -2,6 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import sqlite3 as sql
+import os
+import hashlib
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
@@ -9,6 +12,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///nittanybusiness.db'
 app.config['SQLALCHEMY_TRACK_CHANGES'] = False
 
 db = SQLAlchemy(app)
+
+Data = os.path.join(os.path.dirname(__file__), 'database.db')
+
+DATABASE = 'database.db'
+
+def hash_password(password):
+    """Hash the password using SHA-256."""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Sample routes to demonstrate template rendering
 @app.route('/')
@@ -25,33 +36,165 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        # For demonstration purposes
+        #demo credentials if no Database, remove in full ver.
         if email == 'demo@example.com' and password == 'password':
             session['user'] = {'name': 'Demo User', 'type': 'buyer'}
             return redirect(url_for('dashboard'))
+        
+        hashed_password = hash_password(password)
+
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
+        user = cursor.fetchone()
+        connection.close()
+
+        if user:
+            session['user'] = {'name': 'Demo User', 'type': 'buyer'}  # Store user session
+            return redirect(url_for('dashboard'))
         else:
-            message = 'Invalid email or password'
+            message = 'Invalid email or password.'
     
     return render_template('login.html', message=message, success=success)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    message = None
-    success = False
-    
     if request.method == 'POST':
         # Handle registration logic here
-        name = request.form.get('name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        phone = request.form.get('phone')
+        #email = request.form.get('email')
+        #password = request.form.get('password')
+        #confirm_password = request.form.get('confirm_password')
         user_type = request.form.get('user_type')
+        session['userRegistration'] = {
+            'email': request.form.get('email'),
+            'password': request.form.get('password'),
+            'name': request.form.get('name'),
+        }
+
+        # redirect to second registration page based on user type
+        if user_type == 'buyer':
+            return redirect(url_for('registerBuyer'))
+        elif user_type == 'seller':
+            return redirect(url_for('registerSeller'))
+        elif user_type == 'helpdesk':
+            return redirect(url_for('registerHelpDesk'))
         
-        # For demonstration purposes
-        message = f'Account created for {name} as {user_type}'
-        success = True
-    
-    return render_template('register.html', message=message, success=success)
+    return render_template('register.html')
+
+@app.route('/registerBuyer', methods=['GET', 'POST'])
+def registerBuyer():
+    if request.method == 'POST':
+        userRegistration = session.get('userRegistration', {})
+        
+        email = userRegistration.get('email')
+        password = userRegistration.get('password')
+        buyer_address_id = request.form.get('buyer_address_id') #TODO make this assign a real id
+        business_name = request.form.get('name')
+        
+        print(email, buyer_address_id, business_name)
+        # Add validation and database operations
+        try:
+            # Add the buyer to database
+            connection = sql.connect(Data)
+            cursor = connection.cursor()
+            cursor.execute('''
+                INSERT INTO Users(email,password)
+                VALUES(?,?)
+            ''', (email, password))
+            #cursor.execute('''
+            #    INSERT INTO Buyers(email,business_name,buyer_address_id)
+            #    VALUES(?,?,?)
+            #''', (email, business_name, buyer_address_id))
+            connection.commit()
+            connection.close()
+            
+            message = f'Buyer account created for {business_name}'
+            success = True
+            
+            return redirect(url_for('login'))
+        except Exception as e:
+            message = f'Failed to create account :('
+            success = False
+
+    return render_template('registerBuyer.html')
+
+
+@app.route('/registerHelpDesk', methods=['GET', 'POST'])
+def registerHelpDesk():
+    if request.method == 'POST':
+        userRegistration = session.get('userRegistration', {})
+        
+        email = userRegistration.get('email')
+        password = userRegistration.get('password')
+        position = request.form.get('position')
+        
+        # Add validation and database operations
+        try:
+            # Add the buyer to database
+            connection = sql.connect(Data)
+            cursor = connection.cursor()
+            cursor.execute('''
+                INSERT INTO Users(email,password)
+                VALUES(?,?)
+            ''', (email, password))
+            #cursor.execute('''
+            #    INSERT INTO HelpDesk(email,position)
+            #    VALUES(?,?)
+            #''', (email, position))
+            connection.commit()
+            connection.close()
+            
+            message = f'Help Desk account created successfully!'
+            success = True
+            
+            return redirect(url_for('login'))
+        except Exception as e:
+            message = f'Failed to create account :('
+            success = False
+
+    return render_template('registerHelpDesk.html')
+
+
+@app.route('/registerSeller', methods=['GET', 'POST'])
+def registerSeller():
+    if request.method == 'POST':
+        userRegistration = session.get('userRegistration', {})
+        
+        email = userRegistration.get('email')
+        password = userRegistration.get('password')
+        Business_Name = request.form.get('Business_Name')
+        Business_Address_Id = request.form.get('Business_Address_Id')
+        bank_routing_number = request.form.get('bank_routing_number')
+        bank_account_number = request.form.get('bank_account_number')
+        balance = 0 #default
+        
+        
+        # Add validation and database operations
+        try:
+            # Add the buyer to database
+            connection = sql.connect(Data)
+            cursor = connection.cursor()
+            cursor.execute('''
+                INSERT INTO Users(email,password)
+                VALUES(?,?)
+            ''', (email, password))
+            #cursor.execute('''
+            #    INSERT INTO HelpDesk(email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance)
+            #    VALUES(?,?)
+            #''', (email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance))
+            connection.commit()
+            connection.close()
+            
+            message = f'Seller account created successfully!'
+            success = True
+            
+            return redirect(url_for('login'))
+        except Exception as e:
+            message = f'Failed to create account :('
+            success = False
+
+    return render_template('registerSeller.html')
+
 
 @app.route('/products')
 def products():
