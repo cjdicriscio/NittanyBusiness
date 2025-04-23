@@ -1,6 +1,7 @@
-# THINGS TO DO:
+# THINGS TO DO
 
 Required Features:
+
 1. User Login
 2. Category Hierarchy
 3. Product Listing Management
@@ -11,6 +12,7 @@ Required Features:
 8. User Profile Update
 
 Extra Credit Features:
+
 1. Shopping Cart
 2. Product Promotion
 3. HelpDesk Support (Add Category Request Only)
