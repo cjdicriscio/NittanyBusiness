@@ -36,6 +36,7 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
+        
         #demo credentials if no Database, remove in full ver.
         if email == 'demo@example.com' and password == 'password':
             session['user'] = {'name': 'Demo User', 'type': 'buyer'}
@@ -85,13 +86,13 @@ def register():
 def registerBuyer():
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
-        
         email = userRegistration.get('email')
         password = userRegistration.get('password')
+        password = hash_password(password)
         buyer_address_id = request.form.get('buyer_address_id') #TODO make this assign a real id
         business_name = request.form.get('name')
         
-        print(email, buyer_address_id, business_name)
+        #print(email, buyer_address_id, business_name)
         # Add validation and database operations
         try:
             # Add the buyer to database
@@ -101,10 +102,10 @@ def registerBuyer():
                 INSERT INTO Users(email,password)
                 VALUES(?,?)
             ''', (email, password))
-            #cursor.execute('''
-            #    INSERT INTO Buyers(email,business_name,buyer_address_id)
-            #    VALUES(?,?,?)
-            #''', (email, business_name, buyer_address_id))
+            cursor.execute('''
+                INSERT INTO Buyers(email,business_name,buyer_address_id)
+                VALUES(?,?,?)
+            ''', (email, business_name,buyer_address_id))
             connection.commit()
             connection.close()
             
@@ -123,24 +124,26 @@ def registerBuyer():
 def registerHelpDesk():
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
-        
+        #print(userRegistration)
         email = userRegistration.get('email')
         password = userRegistration.get('password')
+        password = hash_password(password)
         position = request.form.get('position')
         
         # Add validation and database operations
         try:
-            # Add the buyer to database
+            # Add the helpdesk to database
             connection = sql.connect(Data)
             cursor = connection.cursor()
-            cursor.execute('''
+            cursor = cursor.execute('''
                 INSERT INTO Users(email,password)
                 VALUES(?,?)
             ''', (email, password))
-            #cursor.execute('''
-            #    INSERT INTO HelpDesk(email,position)
-            #    VALUES(?,?)
-            #''', (email, position))
+            connection.commit()
+            cursor = cursor.execute('''
+                INSERT INTO Helpdesk(email,position)
+                VALUES(?,?)
+            ''', (email, position))
             connection.commit()
             connection.close()
             
@@ -149,6 +152,7 @@ def registerHelpDesk():
             
             return redirect(url_for('login'))
         except Exception as e:
+            print(e)
             message = f'Failed to create account :('
             success = False
 
@@ -162,26 +166,26 @@ def registerSeller():
         
         email = userRegistration.get('email')
         password = userRegistration.get('password')
+        password = hash_password(password)
         Business_Name = request.form.get('Business_Name')
-        Business_Address_Id = request.form.get('Business_Address_Id')
+        Business_Address_Id = request.form.get('Business_Address_ID')
         bank_routing_number = request.form.get('bank_routing_number')
         bank_account_number = request.form.get('bank_account_number')
         balance = 0 #default
         
-        
         # Add validation and database operations
         try:
-            # Add the buyer to database
+            # Add the seller to database
             connection = sql.connect(Data)
             cursor = connection.cursor()
             cursor.execute('''
                 INSERT INTO Users(email,password)
                 VALUES(?,?)
             ''', (email, password))
-            #cursor.execute('''
-            #    INSERT INTO HelpDesk(email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance)
-            #    VALUES(?,?)
-            #''', (email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance))
+            cursor.execute('''
+                INSERT INTO Sellers(email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance)
+                VALUES(?,?,?,?,?,?)
+            ''', (email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance))
             connection.commit()
             connection.close()
             
@@ -190,6 +194,7 @@ def registerSeller():
             
             return redirect(url_for('login'))
         except Exception as e:
+            print(e)
             message = f'Failed to create account :('
             success = False
 
