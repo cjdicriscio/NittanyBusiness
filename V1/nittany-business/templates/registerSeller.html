@@ -26,12 +26,17 @@
                 <div class="mb-3">
                     <label for="Business_Name" class="form-label">Business Name</label>
                     <input type="text" class="form-control" id="Business_Name" name="Business_Name" required>
-                    <label for="Business_Address_ID" class="form-label">Business Address ID temp</label>
-                    <input type="text" class="form-control" id="Business_Address_ID" name="Business_Address_ID" required>
                     <label for="bank_routing_number" class="form-label">Routing Number</label>
                     <input type="text" class="form-control" id="bank_routing_number" name="bank_routing_number" required>
                     <label for="bank_account_number" class="form-label">Account Number</label>
                     <input type="text" class="form-control" id="bank_raccount_number" name="bank_account_number" required>
+                    <label for="street_name" class="form-label">Street Name</label>
+                    <input type="text" class="form-control" id="street_name" name="street_name" required>
+                    <label for="street_num" class="form-label">Street Number</label>
+                    <input type="text" class="form-control" id="street_num" name="street_num" pattern="^\d+[a-zA-Z]?$" required>
+                    <label for="zipcode" class="form-label">Zipcode</label>
+                    <!-- Zipcode form found in https://stackoverflow.com/questions/2577236/regex-for-zip-code -->
+                    <input type="text" class="form-control" id="zipcode" name="zipcode" pattern="^\d{5}(?:[-\s]\d{4})?$" maxlength=10 required>
                 </div>
                 
                 <button type="submit" class="btn btn-primary w-100">Register as Seller</button>

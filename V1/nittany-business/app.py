@@ -191,14 +191,22 @@ def registerSeller():
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
         
+        # for Users table
         email = userRegistration.get('email')
         password = userRegistration.get('password')
         password = hash_password(password)
+        
+        # for Sellers table
         Business_Name = request.form.get('Business_Name')
-        Business_Address_Id = request.form.get('Business_Address_ID')
+        address_id = uuid.uuid4().hex
         bank_routing_number = request.form.get('bank_routing_number')
         bank_account_number = request.form.get('bank_account_number')
         balance = 0 #default
+        
+        # goes into Address Table
+        zipcode = request.form.get('zipcode')
+        street_num = request.form.get('street_num')
+        street_name = request.form.get('street_name')
         
         # Add validation and database operations
         try:
@@ -209,10 +217,16 @@ def registerSeller():
                 INSERT INTO Users(email,password)
                 VALUES(?,?)
             ''', (email, password))
+            connection.commit()
             cursor.execute('''
                 INSERT INTO Sellers(email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance)
                 VALUES(?,?,?,?,?,?)
-            ''', (email, Business_Name, Business_Address_Id, bank_routing_number,bank_account_number, balance))
+            ''', (email, Business_Name, address_id, bank_routing_number,bank_account_number, balance))
+            connection.commit()
+            cursor.execute('''
+                INSERT INTO Address(address_ID,zipcode,street_num,street_name)
+                VALUES(?,?,?,?)
+            ''', (address_id, zipcode, street_num, street_name))
             connection.commit()
             connection.close()
             
