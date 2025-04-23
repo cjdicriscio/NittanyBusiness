@@ -12,6 +12,7 @@ Required Features:
 8. User Profile Update
 
 Extra Credit Features:
+
 1. Shopping Cart - Javier Pozo
 2. Product Promotion
 3. HelpDesk Support (Add Category Request Only)
