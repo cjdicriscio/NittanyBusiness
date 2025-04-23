@@ -1,14 +1,18 @@
-What to do for CMPSC 431?
+# THINGS TO DO:
 
-We have:
+Required Features:
+1. User Login
+2. Category Hierarchy
+3. Product Listing Management
+4. Order Management
+5. Product & Seller Review
+6. Product Search
+7. User Registration
+8. User Profile Update
 
-Registration
+Extra Credit Features:
+1. Shopping Cart
+2. Product Promotion
+3. HelpDesk Support (Add Category Request Only)
 
-We need:
-Integrate the SH password
-Set up logic to everything:
-Shopping cart
-request a buy
-cancel buying
-
-Update each view depending on user
+Completed Features:
