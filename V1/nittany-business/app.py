@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import sqlite3 as sql
 import os
 import hashlib
+import uuid
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
@@ -28,8 +29,15 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    message = None
-    success = False
+    message, success = None, False
+
+    flashed = get_flashed_messages()
+    if flashed:
+        try:
+            message, success = flashed[0]
+        except ValueError:
+            message = flashed[0]
+            success = None
     
     if request.method == 'POST':
         # Handle login logic here
@@ -86,36 +94,55 @@ def register():
 def registerBuyer():
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
+        # goes into User table
         email = userRegistration.get('email')
         password = userRegistration.get('password')
         password = hash_password(password)
-        buyer_address_id = request.form.get('buyer_address_id') #TODO make this assign a real id
+        
+        # goes into Buyers table
         business_name = request.form.get('name')
         
-        #print(email, buyer_address_id, business_name)
+        # goes into Address Table
+        zipcode = request.form.get('zipcode')
+        street_num = request.form.get('street_num')
+        street_name = request.form.get('street_name')
+        
+        # connects Buyers and Address
+        address_id = uuid.uuid4().hex
+        
         # Add validation and database operations
         try:
             # Add the buyer to database
-            connection = sql.connect(Data)
+            connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             cursor.execute('''
                 INSERT INTO Users(email,password)
                 VALUES(?,?)
             ''', (email, password))
+            connection.commit()
             cursor.execute('''
                 INSERT INTO Buyers(email,business_name,buyer_address_id)
                 VALUES(?,?,?)
-            ''', (email, business_name,buyer_address_id))
+            ''', (email, business_name,address_id))
+            connection.commit()
+            cursor.execute('''
+                INSERT INTO Address(address_ID,zipcode,street_num,street_name)
+                VALUES(?,?,?,?)
+            ''', (address_id, zipcode, street_num, street_name))
             connection.commit()
             connection.close()
             
             message = f'Buyer account created for {business_name}'
             success = True
+            print("SUCCESS")
+            flash(message, success)
             
             return redirect(url_for('login'))
         except Exception as e:
             message = f'Failed to create account :('
             success = False
+            print("FAILED", e)
+            flash(message, success)
 
     return render_template('registerBuyer.html')
 
@@ -133,7 +160,7 @@ def registerHelpDesk():
         # Add validation and database operations
         try:
             # Add the helpdesk to database
-            connection = sql.connect(Data)
+            connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             cursor = cursor.execute('''
                 INSERT INTO Users(email,password)
@@ -176,7 +203,7 @@ def registerSeller():
         # Add validation and database operations
         try:
             # Add the seller to database
-            connection = sql.connect(Data)
+            connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             cursor.execute('''
                 INSERT INTO Users(email,password)

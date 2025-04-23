@@ -22,12 +22,16 @@
             {% endif %}
             
             <form method="POST" action="{{ url_for('registerBuyer') }}">
-                <!-- Basic Information -->
                 <div class="mb-3">
                     <label for="name" class="form-label">Full Name</label>
                     <input type="text" class="form-control" id="name" name="name" required>
-                    <label for="buyer_address_id" class="form-label">Address ID temp</label>
-                    <input type="text" class="form-control" id="buyer_address_id" name="buyer_address_id" required>
+                    <label for="zipcode" class="form-label">Zipcode</label>
+                    <!-- Zipcode form found in https://stackoverflow.com/questions/2577236/regex-for-zip-code -->
+                    <input type="text" class="form-control" id="zipcode" name="zipcode" pattern="^\d{5}(?:[-\s]\d{4})?$" maxlength=10 required>
+                    <label for="street_num" class="form-label">Street Number</label>
+                    <input type="text" class="form-control" id="street_num" name="street_num" pattern="^\d+[a-zA-Z]?$" required>
+                    <label for="street_name" class="form-label">Street Name</label>
+                    <input type="text" class="form-control" id="street_name" name="street_name" required>
                 </div>
                 
                 <button type="submit" class="btn btn-primary w-100">Register as Buyer</button>
