@@ -289,40 +289,30 @@ def registerSeller():
 
 @app.route('/products')
 def products():
-    # Sample product data
-    products = [
-        {
-            'id': 1,
-            'name': 'Laptop',
-            'price': 999.99,
-            'description': 'High-performance laptop with 16GB RAM',
-            'stock': 10,
-            'image_url': '/static/images/placeholder.jpg'
-        },
-        {
-            'id': 2,
-            'name': 'Smartphone',
-            'price': 699.99,
-            'description': 'Latest smartphone with 128GB storage',
-            'stock': 15,
-            'image_url': '/static/images/placeholder.jpg'
-        },
-        {
-            'id': 3,
-            'name': 'Headphones',
-            'price': 149.99,
-            'description': 'Noise-cancelling wireless headphones',
-            'stock': 0,
-            'image_url': '/static/images/placeholder.jpg'
-        }
-    ]
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    selected_category = request.args.get('category')
+    # Pull Products
+    if (selected_category != ''):
+        cursor.execute('''SELECT * FROM ProductListings WHERE (category = ? AND quantity > 0)''', (selected_category,))
+    else:
+        cursor.execute('''SELECT * FROM ProductListings''')
     
-    # Sample categories
-    categories = [
-        {'id': 1, 'name': 'Electronics'},
-        {'id': 2, 'name': 'Clothing'},
-        {'id': 3, 'name': 'Home & Kitchen'}
-    ]
+    columns = ['sellerEmail', 'id', 'category', 'title', 'name',
+           'description', 'quantity', 'price', 'status']
+
+    products = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    print(selected_category, products)
+
+    # Pull Categories
+    cursor.execute('''SELECT DISTINCT (category) FROM (
+                   SELECT (parent_category) AS category FROM Categories
+                   UNION
+                   SELECT (category_name) AS category FROM Categories)
+                   ''')
+    
+    categories = [row[0] for row in cursor.fetchall()]
     
     # Mock pagination
     class Pagination:
@@ -344,7 +334,7 @@ def products():
                           products=products, 
                           categories=categories, 
                           pagination=pagination,
-                          selected_category=None,
+                          selected_category=selected_category,
                           sort='newest')
 
 @app.route('/dashboard')

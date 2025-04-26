@@ -40,8 +40,8 @@
                     <select class="form-select" name="category">
                         <option value="">All Categories</option>
                         {% for category in categories %}
-                        <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
-                            {{ category.name }}
+                        <option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>
+                            {{ category }}
                         </option>
                         {% endfor %}
                     </select>
@@ -63,20 +63,13 @@
             {% for product in products %}
             <div class="col">
                 <div class="card product-card">
-                    {% if product.stock > 0 %}
-                    <span class="badge bg-success stock-badge">In Stock: {{ product.stock }}</span>
-                    {% else %}
-                    <span class="badge bg-danger stock-badge">Out of Stock</span>
-                    {% endif %}
-                    
-                    <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}" height="200">
                     <div class="card-body">
                         <h5 class="card-title">{{ product.name }}</h5>
-                        <p class="product-price">${{ "%.2f"|format(product.price) }}</p>
+                        <p class="product-price">{{ product.price }}</p>
                         <p class="card-text product-description">{{ product.description }}</p>
-                        
+                        <p class="soldby">Sold By: {{ product.sellerEmail }}</p>
                         <div class="d-grid gap-2">
-                            {% if product.stock > 0 %}
+                            {% if product.quantity > 0 %}
                             <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}">
                                 <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
                             </form>
