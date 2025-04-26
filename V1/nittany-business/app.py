@@ -47,19 +47,52 @@ def login():
         
         #demo credentials if no Database, remove in full ver.
         if email == 'demo@example.com' and password == 'password':
-            session['user'] = {'name': 'Demo User', 'type': 'buyer'}
+            session['user'] = {'name': 'Demo User', 'type': 'Buyer'}
             return redirect(url_for('dashboard'))
         
         hashed_password = hash_password(password)
 
-        connection = sql.connect(DATABASE)
-        cursor = connection.cursor()
-        cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
-        user = cursor.fetchone()
-        connection.close()
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
+            user = cursor.fetchone()
+            
+            if user:
+                email = user[0]
+                userName = ""
+                
+                # checks buyer table to see if user is a buyer
+                cursor.execute('SELECT business_name FROM Buyers WHERE email = ?;', (email,))
+                buyerResult = cursor.fetchone()
+                isBuyer = buyerResult is not None
+                
+                # checks sellers table to see if user is a buyer
+                cursor.execute('SELECT Business_name FROM Sellers WHERE email = ?;', (email,))
+                sellerResult = cursor.fetchone()
+                isSeller = sellerResult is not None
+                
+                if isBuyer:
+                    userName = buyerResult[0]
+                    userType = 'Buyer'
+                elif isSeller:
+                    userName = sellerResult[0]
+                    userType = 'Seller'
+                else:
+                    userName = email
+                    userType = 'Help Desk'
+                
+                #update session to include logged in user
+                session['user'] = {'id': email, 'name': userName, 'type': userType}
+                
+        except Exception as e:
+            print(e)
+        finally:
+            if connection:
+                connection.close() 
+        
 
         if user:
-            session['user'] = {'name': 'Demo User', 'type': 'buyer'}  # Store user session
             return redirect(url_for('dashboard'))
         else:
             message = 'Invalid email or password.'
@@ -130,7 +163,6 @@ def registerBuyer():
                 VALUES(?,?,?,?)
             ''', (address_id, zipcode, street_num, street_name))
             connection.commit()
-            connection.close()
             
             message = f'Buyer account created for {business_name}'
             success = True
@@ -143,6 +175,9 @@ def registerBuyer():
             success = False
             print("FAILED", e)
             flash(message, success)
+        finally:
+            if connection:
+                connection.close()
 
     return render_template('registerBuyer.html')
 
