@@ -57,6 +57,7 @@ def login():
             cursor = connection.cursor()
             cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
             user = cursor.fetchone()
+            connection.commit()
             
             if user:
                 email = user[0]
@@ -66,11 +67,13 @@ def login():
                 cursor.execute('SELECT business_name FROM Buyers WHERE email = ?;', (email,))
                 buyerResult = cursor.fetchone()
                 isBuyer = buyerResult is not None
+                connection.commit()
                 
                 # checks sellers table to see if user is a buyer
                 cursor.execute('SELECT Business_name FROM Sellers WHERE email = ?;', (email,))
                 sellerResult = cursor.fetchone()
                 isSeller = sellerResult is not None
+                connection.commit()
                 
                 if isBuyer:
                     userName = buyerResult[0]
@@ -125,6 +128,8 @@ def register():
 
 @app.route('/registerBuyer', methods=['GET', 'POST'])
 def registerBuyer():
+    message, success = "", False
+    
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
         # goes into User table
@@ -166,24 +171,23 @@ def registerBuyer():
             
             message = f'Buyer account created for {business_name}'
             success = True
-            print("SUCCESS")
-            flash(message, success)
+            flash((message, success))
             
             return redirect(url_for('login'))
         except Exception as e:
-            message = f'Failed to create account :('
+            message = f'Failed to create account: {e}'
             success = False
-            print("FAILED", e)
-            flash(message, success)
         finally:
             if connection:
                 connection.close()
 
-    return render_template('registerBuyer.html')
+    return render_template('registerBuyer.html', message=message, success=success)
 
 
 @app.route('/registerHelpDesk', methods=['GET', 'POST'])
 def registerHelpDesk():
+    message, success = "", False
+    
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
         #print(userRegistration)
@@ -211,14 +215,17 @@ def registerHelpDesk():
             
             message = f'Help Desk account created successfully!'
             success = True
+            flash((message, success))
             
             return redirect(url_for('login'))
         except Exception as e:
-            print(e)
-            message = f'Failed to create account :('
+            message = f'Failed to create account: {e}'
             success = False
+        finally:
+            if connection:
+                connection.close()
 
-    return render_template('registerHelpDesk.html')
+    return render_template('registerHelpDesk.html', message=message, success=success)
 
 
 @app.route('/registerSeller', methods=['GET', 'POST'])
@@ -267,14 +274,17 @@ def registerSeller():
             
             message = f'Seller account created successfully!'
             success = True
+            flash((message, success))
             
             return redirect(url_for('login'))
         except Exception as e:
-            print(e)
-            message = f'Failed to create account :('
+            message = f'Failed to create account: {e}'
             success = False
+        finally:
+            if connection:
+                connection.close()
 
-    return render_template('registerSeller.html')
+    return render_template('registerSeller.html', message=message, success=success)
 
 
 @app.route('/products')
