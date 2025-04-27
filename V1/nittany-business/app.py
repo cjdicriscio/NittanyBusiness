@@ -412,7 +412,7 @@ def productListings():
         ''', (sellerEmail,))
 
     # Preprocess the products into a better format for HTML
-    attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
+    attributes = ['seller_email', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
     # Find Seller names for display 
@@ -421,7 +421,7 @@ def productListings():
             SELECT (business_name)
             FROM Sellers S
             WHERE S.email = ?
-        ''', (product['sellerEmail'],))
+        ''', (product['seller_email'],))
         product['seller_name'] = cursor.fetchone()[0]
         print(product['seller_name'])
 
@@ -536,7 +536,69 @@ def logout():
 # Placeholder routes for dashboard links
 @app.route('/orders')
 def orders():
-    return "Orders Page"
+    user = session.get('user', {})
+    class Pagination:
+        def __init__(self):
+            self.page = 1
+            self.per_page = 10
+            self.total = 3
+            self.has_prev = False
+            self.has_next = False
+            self.prev_num = None
+            self.next_num = None
+        
+        def iter_pages(self):
+            return [1]
+    
+    pagination = Pagination()
+    print(user)
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+    cursor.execute('''
+        SELECT *
+        FROM Orders O
+        WHERE buyer_email = ?     
+        ''',(user['id'],))
+    
+    attributes = ['order_id', 'seller_email', 'buyer_email', 'listing_id', 'date', 'quantity', 'payment']
+    orders = [dict(zip(attributes, row)) for row in cursor.fetchall()]
+    
+     
+    for order in orders:
+        # Find Seller names for display
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Sellers S
+            WHERE S.email = ?
+        ''', (order['seller_email'],))
+        order['seller_name'] = cursor.fetchone()[0]
+
+        # Find buyer names for display
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Buyers B
+            WHERE B.email = ?
+        ''', (order['buyer_email'],))
+        order['buyer_name'] = cursor.fetchone()[0]
+
+        # Find product in the order
+        cursor.execute('''
+            SELECT product_title, product_name
+            FROM ProductListings P
+            WHERE P.listing_id = ?
+        ''', (order['listing_id'],))
+        temp = cursor.fetchone()
+        print(temp, "hey")
+        order['product_title'] = temp[0]
+        order['product_name'] = temp[1]
+        print(order)
+        print(order['product_name'])
+
+    return render_template('orders.html', 
+                           user=user,
+                           pagination=pagination,
+                           orders=orders
+                           )
 
 @app.route('/wishlist')
 def wishlist():
