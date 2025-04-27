@@ -3,7 +3,7 @@
 Required Features:
 
 1. User Login - Completed ✅
-2. Category Hierarchy - Jeff 🛠️
+2. Category Hierarchy - Jeff ✅
 3. Product Listing Management - Sean/Colton 🛠️
 4. Order Management - Jeff 🛠️
 5. Product & Seller Review - Javier 🛠️

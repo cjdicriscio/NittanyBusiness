@@ -47,13 +47,6 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <select class="form-select" name="sort">
-                        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option>
-                        <option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
-                        <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
                 </div>
             </form>
@@ -68,6 +61,7 @@
                         <p class="product-price">{{ product.price }}</p>
                         <p class="card-text product-description">{{ product.description }}</p>
                         <p class="soldby">Sold By: {{ product.sellerEmail }}</p>
+                        <p class="tag">Tag: {{product.category }}</p>
                         <div class="d-grid gap-2">
                             {% if product.quantity > 0 %}
                             <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}">

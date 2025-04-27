@@ -293,27 +293,57 @@ def products():
     cursor = connection.cursor()
 
     selected_category = request.args.get('category')
-    # Pull Products
-    if (selected_category != ''):
-        cursor.execute('''SELECT * FROM ProductListings WHERE (category = ? AND quantity > 0)''', (selected_category,))
+
+    # Recursively find all products under the current category
+    if (selected_category):
+        cursor.execute(f'''
+        WITH RECURSIVE subcategories(category_name) AS (
+            SELECT category_name
+            FROM Categories
+            WHERE category_name = ?
+
+            UNION ALL
+
+            SELECT c.category_name
+            FROM Categories c
+            INNER JOIN subcategories s ON c.parent_category = s.category_name
+        )
+        SELECT * FROM ProductListings
+        WHERE category IN (SELECT category_name FROM subcategories)
+        ''', (selected_category,))
+
+    # Initially display all products before filtering
     else:
         cursor.execute('''SELECT * FROM ProductListings''')
-    
-    columns = ['sellerEmail', 'id', 'category', 'title', 'name',
-           'description', 'quantity', 'price', 'status']
 
-    products = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    print(selected_category, products)
+    # Preprocess the products into a better format for HTML
+    attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
+    products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
-    # Pull Categories
-    cursor.execute('''SELECT DISTINCT (category) FROM (
-                   SELECT (parent_category) AS category FROM Categories
-                   UNION
-                   SELECT (category_name) AS category FROM Categories)
-                   ''')
+
+    # Find subcategories one level below current category
+    if (selected_category):
+        cursor.execute('''
+            SELECT (category_name) 
+            FROM Categories
+            WHERE parent_category=?
+                       
+            UNION
+                       
+            SELECT (category_name)
+            FROM Categories
+            WHERE category_name=?         
+            ''', (selected_category,selected_category))
     
+    # Default Categories
+    else:
+        cursor.execute('''SELECT (category_name) 
+            FROM Categories 
+            WHERE parent_category = ?''', ("Root",))
+    
+    # Preprocessing into a string
     categories = [row[0] for row in cursor.fetchall()]
-    
+
     # Mock pagination
     class Pagination:
         def __init__(self):
@@ -329,13 +359,13 @@ def products():
             return [1]
     
     pagination = Pagination()
-    
+    print(selected_category)
     return render_template('products.html', 
-                          products=products, 
-                          categories=categories, 
+                          products=products,
+                          categories=categories,
                           pagination=pagination,
-                          selected_category=selected_category,
-                          sort='newest')
+                          selected_category = selected_category
+                          )
 
 @app.route('/dashboard')
 def dashboard():
