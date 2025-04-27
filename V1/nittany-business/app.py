@@ -47,7 +47,7 @@ def login():
         
         #demo credentials if no Database, remove in full ver.
         if email == 'demo@example.com' and password == 'password':
-            session['user'] = {'name': 'Demo User', 'type': 'Buyer'}
+            session['user'] = {'id': 'email', 'name': 'userName', 'type': 'userType'}
             return redirect(url_for('dashboard'))
         
         hashed_password = hash_password(password)
@@ -528,9 +528,93 @@ def wishlist():
 def manage_listings():
     return "Manage Listings Page"
 
-@app.route('/manage_tickets')
-def manage_tickets():
-    return "Manage Tickets Page"
+@app.route('/update_request/<int:request_id>', methods=['GET', 'POST'])
+def update_request(request_id):
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    
+    elif session['user']['type'] != 'Help Desk':
+        flash('You must be Help Desk to access this page.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        new_category = request.form.get('new_category')
+        parent_category = request.form.get('parent_category')
+        new_sender_email = request.form.get('new_sender_email')
+        new_request_status = request.form.get('new_request_status')
+
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            if new_category and parent_category:
+                cursor.execute("""
+                    INSERT INTO Categories(category_name,parent_category)
+                    VALUES(?,?)
+                """, (new_category, parent_category))
+                connection.commit()
+
+            if new_sender_email:
+                cursor.execute('SELECT * FROM Requests WHERE request_id = ?;', (request_id,))
+                req = cursor.fetchone()
+                sender_email = req[1]
+                cursor.execute("""
+                    UPDATE Users
+                    SET email = ?
+                    WHERE email = ?
+                """, (new_sender_email, sender_email))
+                connection.commit()
+
+            if new_request_status is not None:
+                cursor.execute("""
+                    UPDATE Requests
+                    SET request_status = ?
+                    WHERE request_id = ?
+                """, (int(new_request_status), request_id))
+                connection.commit()
+            
+        except Exception as e:
+            print(e)
+        finally:
+            if connection:
+                connection.close() 
+        return redirect(url_for('manage_requests'))
+
+    return render_template('update_request.html', request_id=request_id)
+
+@app.route('/manage_requests')
+def manage_requests():
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    
+    elif session['user']['type'] != 'Help Desk':
+        flash('You must be Help Desk to access this page.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Requests WHERE request_status = 0")
+        requests_list = cursor.fetchall()
+        requests = []
+        for i,x in enumerate(requests_list):
+            requests.append({})
+            requests[i]['request_id'] = x[0]
+            requests[i]['sender_email'] = x[1]
+            requests[i]['helpdesk_email'] = x[2]
+            requests[i]['request_type'] = x[3]
+            requests[i]['request_desc'] = x[4]
+            requests[i]['request_status'] = x[5]
+        connection.commit()
+            
+    except Exception as e:
+        print(e)
+    finally:
+        if connection:
+            connection.close() 
+
+    return render_template('manage_requests.html', requests=requests)
 
 @app.route('/payment_methods')
 def payment_methods():
@@ -544,9 +628,94 @@ def sales_analytics():
 def knowledge_base():
     return "Knowledge Base Page"
 
-@app.route('/profile')
+@app.route('/profile', methods=['GET', 'POST'])
 def profile():
-    return "Profile Page"
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    user = session['user']
+
+    if request.method == 'POST':
+        
+        passcode = request.form.get('passcode')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        hashed_password = hash_password(passcode)
+
+        user = session['user']
+        email = user['id']
+        if new_password != confirm_password:
+            
+            flash('Passwords do not match.', 'error')
+            return redirect(url_for('profile'))
+        
+        try:
+            #print('good')
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
+            user = cursor.fetchone()
+            connection.commit()
+            #print('good')
+            if user:
+                new_hashed_password = hash_password(new_password)
+                #print('good')
+                cursor.execute("""
+                    UPDATE users
+                    SET password = ?
+                    WHERE email = ?
+                """, (new_hashed_password, email))
+                connection.commit()
+                #print('good')
+                #flash('Password updated successfully!', 'success')
+            else:
+                #print('inv')
+                flash('Invalid passcode.', 'error')
+                return redirect(url_for('profile'))
+            
+        except Exception as e:
+            #print('good')
+            print(e)
+        finally:
+            if connection:
+                connection.close() 
+        
+    return render_template('profile.html', user=user)
+
+@app.route('/submit_request', methods=['GET', 'POST'])
+def submit_request():
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    user = session['user']
+    if request.method == 'POST':
+        request_type = request.form.get('request_type')
+        description = request.form.get('description')
+
+        helpdesk_email = 'helpdeskteam@nittybiz.com'
+        request_status = 0
+        email = user['id']
+        if not request_type or not description:
+            flash('All fields are required.', 'error')
+            return redirect(url_for('submit_request'))
+        try:
+            #print('good')
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute("""INSERT INTO Requests (sender_email, helpdesk_staff_email, request_type, request_desc, request_status)
+            VALUES (?, ?, ?, ?, ?)""", (email, helpdesk_email, request_type, description, request_status))
+            connection.commit()
+            #print('good')
+            flash('Helpdesk request submitted successfully!', 'success')
+            
+        except Exception as e:
+            #print('good')
+            print(e)
+        finally:
+            if connection:
+                connection.close()
+
+    return render_template('submit_request.html')
 
 @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):

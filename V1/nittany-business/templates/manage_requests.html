@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Requests</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="mb-4">Helpdesk Requests</h2>
+
+        {% for request in requests %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5>Request ID: {{ request['request_id'] }}</h5>
+                <p><strong>Sender Email:</strong> {{ request['sender_email'] }}</p>
+                <p><strong>Request Type:</strong> {{ request['request_type'] }}</p>
+                <p><strong>Description:</strong> {{ request['request_desc'] }}</p>
+                <p><strong>Status:</strong> {% if request['request_status'] == 0 %}Open{% else %}Closed{% endif %}</p>
+                <a href="{{ url_for('update_request', request_id=request['request_id']) }}" class="btn btn-primary">Manage Request</a>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="text-center">
+            <a href="{{ url_for('profile') }}" class="btn btn-secondary">Back to Profile</a>
+        </div>
+    </div>
+</body>
+</html>
