@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helpdesk Request Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="mb-4 text-center">Manage Helpdesk Requests</h2>
+
+        {% if message %}
+        <div class="alert {% if success %}alert-success{% else %}alert-danger{% endif %}">
+            {{ message }}
+        </div>
+        {% endif %}
+
+        {% for request in requests %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Request ID: {{ request['request_id'] }}</h5>
+                <p><strong>Sender Email:</strong> {{ request['sender_email'] }}</p>
+                <p><strong>Helpdesk Staff:</strong> {{ request['helpdesk_staff_email'] }}</p>
+                <p><strong>Request Type:</strong> {{ request['request_type'] }}</p>
+                <p><strong>Description:</strong> {{ request['request_desc'] }}</p>
+                <p><strong>Status:</strong> {% if request['request_status'] == 0 %}Open{% else %}Closed{% endif %}</p>
+
+                <form method="POST" action="{{ url_for('update_request', request_id=request['request_id']) }}">
+                    <div class="mb-3">
+                        <label for="new_request_type_{{ request['request_id'] }}" class="form-label">New Request Type (Category)</label>
+                        <input type="text" class="form-control" id="new_request_type_{{ request['request_id'] }}" name="new_request_type" placeholder="Enter new category">
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_sender_email_{{ request['request_id'] }}" class="form-label">New Sender Email</label>
+                        <input type="email" class="form-control" id="new_sender_email_{{ request['request_id'] }}" name="new_sender_email" placeholder="Enter new sender email">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Request</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+
+        <div class="text-center">
+            <a href="{{ url_for('profile') }}" class="btn btn-secondary">Back to Profile</a>
+        </div>
+    </div>
+</body>
+</html>

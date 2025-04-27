@@ -400,9 +400,70 @@ def wishlist():
 def manage_listings():
     return "Manage Listings Page"
 
-@app.route('/manage_tickets')
-def manage_tickets():
-    return "Manage Tickets Page"
+@app.route('/update_request/<int:request_id>', methods=['POST'])
+def update_ticket(request_id):
+    new_category = request.form.get('new_request_type')
+    new_sender_email = request.form.get('new_sender_email')
+
+    try:
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        if new_category:
+            cursor.execute("""
+                UPDATE Requests
+                SET request_type = ?
+                WHERE request_id = ?
+            """, (new_category, request_id))
+
+        if new_sender_email:
+            cursor.execute("""
+                UPDATE Requests
+                SET sender_email = ?
+                WHERE request_id = ?
+            """, (new_sender_email, request_id))
+        connection.commit()
+            
+    except Exception as e:
+        print(e)
+    finally:
+        if connection:
+            connection.close() 
+
+    return redirect(url_for('manage_tickets'))
+
+@app.route('/manage_requests')
+def manage_requests():
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    
+    elif session['user']['type'] != 'Help Desk':
+        flash('You must be Help Desk to access this page.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Requests WHERE request_status = 0")
+        requests_list = cursor.fetchall()
+        requests = []
+        for i,x in enumerate(requests_list):
+            requests.append({})
+            requests[i]['request_id'] = x[0]
+            requests[i]['sender_email'] = x[1]
+            requests[i]['helpdesk_email'] = x[2]
+            requests[i]['request_type'] = x[3]
+            requests[i]['request_desc'] = x[4]
+            requests[i]['request_status'] = x[5]
+        connection.commit()
+            
+    except Exception as e:
+        print(e)
+    finally:
+        if connection:
+            connection.close() 
+
+    return render_template('manage_requests.html', requests=requests)
 
 @app.route('/payment_methods')
 def payment_methods():
@@ -455,7 +516,7 @@ def profile():
                 """, (new_hashed_password, email))
                 connection.commit()
                 #print('good')
-                flash('Password updated successfully!', 'success')
+                #flash('Password updated successfully!', 'success')
             else:
                 #print('inv')
                 flash('Invalid passcode.', 'error')
