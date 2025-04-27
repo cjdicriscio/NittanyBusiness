@@ -47,7 +47,7 @@ def login():
         
         #demo credentials if no Database, remove in full ver.
         if email == 'demo@example.com' and password == 'password':
-            session['user'] = {'name': 'Demo User', 'type': 'Buyer'}
+            session['user'] = {'id': 'email', 'name': 'userName', 'type': 'userType'}
             return redirect(url_for('dashboard'))
         
         hashed_password = hash_password(password)
@@ -416,9 +416,94 @@ def sales_analytics():
 def knowledge_base():
     return "Knowledge Base Page"
 
-@app.route('/profile')
+@app.route('/profile', methods=['GET', 'POST'])
 def profile():
-    return "Profile Page"
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    user = session['user']
+
+    if request.method == 'POST':
+        
+        passcode = request.form.get('passcode')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        hashed_password = hash_password(passcode)
+
+        user = session['user']
+        email = user['id']
+        if new_password != confirm_password:
+            
+            flash('Passwords do not match.', 'error')
+            return redirect(url_for('profile'))
+        
+        try:
+            #print('good')
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
+            user = cursor.fetchone()
+            connection.commit()
+            #print('good')
+            if user:
+                new_hashed_password = hash_password(new_password)
+                #print('good')
+                cursor.execute("""
+                    UPDATE users
+                    SET password = ?
+                    WHERE email = ?
+                """, (new_hashed_password, email))
+                connection.commit()
+                #print('good')
+                flash('Password updated successfully!', 'success')
+            else:
+                #print('inv')
+                flash('Invalid passcode.', 'error')
+                return redirect(url_for('profile'))
+            
+        except Exception as e:
+            #print('good')
+            print(e)
+        finally:
+            if connection:
+                connection.close() 
+        
+    return render_template('profile.html', user=user)
+
+@app.route('/submit_request', methods=['GET', 'POST'])
+def submit_request():
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    user = session['user']
+    if request.method == 'POST':
+        request_type = request.form.get('request_type')
+        description = request.form.get('description')
+
+        helpdesk_email = 'helpdeskteam@nittybiz.com'
+        request_status = 0
+        email = user['id']
+        if not request_type or not description:
+            flash('All fields are required.', 'error')
+            return redirect(url_for('submit_request'))
+        try:
+            #print('good')
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute("""INSERT INTO Requests (sender_email, helpdesk_staff_email, request_type, request_desc, request_status)
+            VALUES (?, ?, ?, ?, ?)""", (email, helpdesk_email, request_type, description, request_status))
+            connection.commit()
+            #print('good')
+            flash('Helpdesk request submitted successfully!', 'success')
+            
+        except Exception as e:
+            #print('good')
+            print(e)
+        finally:
+            if connection:
+                connection.close()
+
+    return render_template('submit_request.html')
 
 @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
