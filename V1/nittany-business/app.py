@@ -323,6 +323,15 @@ def products():
     attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
+    # Find Seller names for display 
+    for product in products:
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Sellers S
+            WHERE S.email = ?
+        ''', (product['sellerEmail'],))
+        product['seller_name'] = cursor.fetchone()[0]
+        print(product['seller_name'])
 
     # Find subcategories one level below current category
     if (selected_category):
@@ -362,7 +371,7 @@ def products():
             return [1]
     
     pagination = Pagination()
-    print(selected_category)
+
     return render_template('products.html', 
                           products=products,
                           categories=categories,
@@ -406,6 +415,15 @@ def productListings():
     attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
+    # Find Seller names for display 
+    for product in products:
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Sellers S
+            WHERE S.email = ?
+        ''', (product['sellerEmail'],))
+        product['seller_name'] = cursor.fetchone()[0]
+        print(product['seller_name'])
 
     # Find subcategories one level below current category
     if (selected_category):

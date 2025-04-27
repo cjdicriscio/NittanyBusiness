@@ -64,7 +64,7 @@
                         <h5 class="card-title">{{ product.name }}</h5>
                         <p class="product-price">{{ product.price }}</p>
                         <p class="card-text product-description">{{ product.description }}</p>
-                        <p class="soldby">Sold By: {{ product.sellerEmail }}</p>
+                        <p class="soldby">Sold By: {{ product.seller_name }}</p>
                         <p class="tag">Tag: {{product.category }}</p>
                         <div class="d-grid gap-2">
                             {% if product.quantity > 0 %}
