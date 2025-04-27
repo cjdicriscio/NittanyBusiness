@@ -296,6 +296,8 @@ def products():
     cursor = connection.cursor()
 
     selected_category = request.args.get('category')
+    search_query = request.args.get('search') # instance to search
+
 
     # Recursively find all products under the current category
     if (selected_category):
@@ -322,6 +324,14 @@ def products():
     # Preprocess the products into a better format for HTML
     attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
+
+    # Search query
+    if search_query:
+        products = [
+            product for product in products
+            if search_query.lower() in product['name'].lower() or search_query.lower() in product['description'].lower()
+        ]
+
 
     # Find Seller names for display 
     for product in products:
