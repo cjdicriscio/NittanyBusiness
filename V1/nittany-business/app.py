@@ -400,36 +400,59 @@ def wishlist():
 def manage_listings():
     return "Manage Listings Page"
 
-@app.route('/update_request/<int:request_id>', methods=['POST'])
-def update_ticket(request_id):
-    new_category = request.form.get('new_request_type')
-    new_sender_email = request.form.get('new_sender_email')
+@app.route('/update_request/<int:request_id>', methods=['GET', 'POST'])
+def update_request(request_id):
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    
+    elif session['user']['type'] != 'Help Desk':
+        flash('You must be Help Desk to access this page.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        new_category = request.form.get('new_category')
+        parent_category = request.form.get('parent_category')
+        new_sender_email = request.form.get('new_sender_email')
+        new_request_status = request.form.get('new_request_status')
 
-    try:
-        connection = sql.connect(DATABASE)
-        cursor = connection.cursor()
-        if new_category:
-            cursor.execute("""
-                UPDATE Requests
-                SET request_type = ?
-                WHERE request_id = ?
-            """, (new_category, request_id))
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            if new_category:
+                cursor.execute("""
+                    INSERT INTO Categories(category_name,parent_category)
+                    VALUES(?,?)
+                """, (new_category, parent_category))
+                connection.commit()
 
-        if new_sender_email:
-            cursor.execute("""
-                UPDATE Requests
-                SET sender_email = ?
-                WHERE request_id = ?
-            """, (new_sender_email, request_id))
-        connection.commit()
+            if new_sender_email:
+                cursor.execute('SELECT * FROM Requests WHERE request_id = ?;', (request_id,))
+                req = cursor.fetchone()
+                sender_email = req[1]
+                cursor.execute("""
+                    UPDATE Users
+                    SET email = ?
+                    WHERE email = ?
+                """, (new_sender_email, sender_email))
+                connection.commit()
+
+            if new_request_status is not None:
+                cursor.execute("""
+                    UPDATE Requests
+                    SET request_status = ?
+                    WHERE request_id = ?
+                """, (int(new_request_status), request_id))
+                connection.commit()
             
-    except Exception as e:
-        print(e)
-    finally:
-        if connection:
-            connection.close() 
+        except Exception as e:
+            print(e)
+        finally:
+            if connection:
+                connection.close() 
+        return redirect(url_for('manage_requests'))
 
-    return redirect(url_for('manage_tickets'))
+    return render_template('update_request.html', request_id=request_id)
 
 @app.route('/manage_requests')
 def manage_requests():
