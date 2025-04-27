@@ -419,7 +419,7 @@ def update_request(request_id):
         try:
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
-            if new_category:
+            if new_category and parent_category:
                 cursor.execute("""
                     INSERT INTO Categories(category_name,parent_category)
                     VALUES(?,?)
