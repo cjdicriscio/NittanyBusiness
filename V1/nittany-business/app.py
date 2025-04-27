@@ -389,6 +389,47 @@ def products():
                           selected_category = selected_category
                           )
 
+#Cart section
+@app.route('/cart')
+def cart():
+    # Make sure user is logged in
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    user = session['user']
+
+    # Only buyers can access the cart
+    if user['type'] != 'Buyer':
+        return redirect(url_for('dashboard'))
+
+    # Get cart from session
+    cart = session.get('cart', [])
+
+    # ✅ Remove "$" and safely convert to float
+    total_price = sum(float(item['price'].replace('$', '')) * int(item['quantity']) for item in cart)
+
+    return render_template('cart.html', user=user, cart=cart, total_price=total_price)
+
+#route to remove the selected item
+@app.route('/remove_from_cart/<int:listing_id>', methods=['POST'])
+def remove_from_cart(listing_id):
+    if 'cart' not in session:
+        return redirect(url_for('cart'))
+
+    cart = session['cart']
+
+    # Keep only the items that are NOT the one we are removing
+    cart = [item for item in cart if item['listing_id'] != listing_id]
+
+    session['cart'] = cart  # Save updated cart back into session
+
+    flash('Item removed from cart.', 'success')
+    return redirect(url_for('cart'))
+
+
+
+
+
 @app.route('/productListings', methods=['GET', 'POST'])
 def productListings():
     connection = sql.connect(DATABASE)
@@ -503,9 +544,10 @@ def createProductListing():
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             cursor.execute('''
-                INSERT INTO Product_Listings(Seller_Email, Listing_ID, Category, Product_Title, Product_Name, Product_Description, Quantity, Product_Price, Status)
-                VALUES(?,?)
-            ''', (sellerEmail, listingID, category, productTitle, productName, description, quantity, price, True))
+            INSERT INTO ProductListings(seller_email, listing_id, category, product_title, product_name, product_description, quantity, product_price, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (sellerEmail, listingID, category, productTitle, productName, description, quantity, price, 1))
+
             connection.commit()
             connection.close()
             
@@ -809,7 +851,52 @@ def submit_request():
 
 @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
-    # Add to cart logic here
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    # ✅ Using correct column names from your ProductListings table
+    cursor.execute('''
+        SELECT seller_email, listing_id, category, product_title, product_name, product_description, quantity, product_price, status
+        FROM ProductListings
+        WHERE listing_id = ?
+    ''', (product_id,))
+    product_row = cursor.fetchone()
+    connection.close()
+
+    if not product_row:
+        flash('Product not found.', 'danger')
+        return redirect(url_for('products'))
+
+    attributes = ['seller_email', 'listing_id', 'category', 'product_title', 'product_name', 'product_description', 'quantity', 'product_price', 'status']
+    product = dict(zip(attributes, product_row))
+
+    # Initialize cart if not present
+    if 'cart' not in session:
+        session['cart'] = []
+
+    cart = session['cart']
+
+        # Read quantity from form
+    form_quantity = int(request.form.get('quantity', 1))  # Default to 1 if missing
+
+    for item in cart:
+        if item['listing_id'] == product['listing_id']:
+            # If already exists, increase quantity
+            item['quantity'] += form_quantity
+            break
+
+    else:
+        # Otherwise add new product
+        cart.append({
+            'listing_id': product['listing_id'],
+            'name': product['product_name'],
+            'price': product['product_price'],
+            'quantity': 1
+        })
+
+    session['cart'] = cart  # Save cart back into session
+    flash('Product added to cart!', 'success')
+
     return redirect(url_for('products'))
 
 @app.route('/buy_now/<int:product_id>')

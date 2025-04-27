@@ -23,10 +23,26 @@
                         <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
                     </li>
                 </ul>
-                <form class="d-flex" method="GET" action="{{ url_for('products') }}">
-                    <input class="form-control me-2" type="search" placeholder="Search products" name="search">
-                    <button class="btn btn-light" type="submit">Search</button>
-                </form>
+                <div class="d-flex align-items-center">
+                    <form class="d-flex me-3" method="GET" action="{{ url_for('products') }}">
+                        <input class="form-control me-2" type="search" placeholder="Search products" name="search">
+                        <button class="btn btn-light" type="submit">Search</button>
+                    </form>
+
+                    <!-- New Cart Button -->
+                    <a href="{{ url_for('cart') }}" class="btn btn-light position-relative me-2">
+                        🛒
+                        {% if session.get('cart') %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ session['cart'] | length }}
+                            </span>
+                        {% endif %}
+                    </a>
+
+                    <!-- Logout Button -->
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Logout</a>
+                </div>
+
             </div>
         </div>
     </nav>
@@ -64,9 +80,11 @@
                         <p class="tag">Tag: {{product.category }}</p>
                         <div class="d-grid gap-2">
                             {% if product.quantity > 0 %}
-                            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}">
+                            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}" class="d-flex flex-column align-items-center">
+                                <input type="number" name="quantity" class="form-control mb-2" value="1" min="1" max="{{ product.quantity }}" style="width: 80px;">
                                 <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
                             </form>
+                            
                             <a href="{{ url_for('buy_now', product_id=product.id) }}" class="btn btn-outline-primary">Buy Now</a>
                             {% else %}
                             <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
