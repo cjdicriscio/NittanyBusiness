@@ -76,7 +76,7 @@
             </div>
             
             <!-- Buyer-specific Dashboard Cards -->
-            {% if user.type == 'buyer' %}
+            {% if user.type == 'Buyer' %}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
@@ -90,21 +90,21 @@
             {% endif %}
             
             <!-- Seller-specific Dashboard Cards -->
-            {% if user.type == 'seller' %}
+            {% if user.type == 'Seller' %}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
                         <div class="dashboard-icon">📋</div>
                         <h5 class="card-title">Manage Listings</h5>
                         <p class="card-text">Add, edit, or remove your product listings.</p>
-                        <a href="{{ url_for('manage_listings') }}" class="btn btn-primary">Manage Listings</a>
+                        <a href="{{ url_for('productListings') }}" class="btn btn-primary">Manage Listings</a>
                     </div>
                 </div>
             </div>
             {% endif %}
             
             <!-- HelpDesk-specific Dashboard Cards -->
-            {% if user.type == 'helpdesk' %}
+            {% if user.type == 'Help Desk' %}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
@@ -118,7 +118,7 @@
             {% endif %}
             
             <!-- Additional Cards Based on User Type -->
-            {% if user.type == 'buyer' %}
+            {% if user.type == 'Buyer' %}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">

@@ -230,6 +230,9 @@ def registerHelpDesk():
 
 @app.route('/registerSeller', methods=['GET', 'POST'])
 def registerSeller():
+    message = None
+    success = True
+    
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
         
@@ -366,6 +369,131 @@ def products():
                           pagination=pagination,
                           selected_category = selected_category
                           )
+
+@app.route('/productListings', methods=['GET', 'POST'])
+def productListings():
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    selected_category = request.args.get('category')
+    sellerEmail = session['user']['id']
+
+    # Recursively find all products under the current category
+    if selected_category:
+        cursor.execute(f'''
+        WITH RECURSIVE subcategories(category_name) AS (
+            SELECT category_name
+            FROM Categories
+            WHERE category_name = ?
+
+            UNION ALL
+
+            SELECT c.category_name
+            FROM Categories c
+            INNER JOIN subcategories s ON c.parent_category = s.category_name
+        )
+        SELECT * FROM ProductListings
+        WHERE category IN (SELECT category_name FROM subcategories)
+        AND Seller_Email = ?
+        ''', (selected_category, sellerEmail))
+    else:
+        cursor.execute('''
+        SELECT * FROM ProductListings
+        WHERE Seller_Email = ?
+        ''', (sellerEmail,))
+
+    # Preprocess the products into a better format for HTML
+    attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
+    products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
+
+
+    # Find subcategories one level below current category
+    if (selected_category):
+        cursor.execute('''
+            SELECT (category_name) 
+            FROM Categories
+            WHERE parent_category=?
+                       
+            UNION
+                       
+            SELECT (category_name)
+            FROM Categories
+            WHERE category_name=?         
+            ''', (selected_category,selected_category))
+    
+    # Default Categories
+    else:
+        cursor.execute('''SELECT (category_name) 
+            FROM Categories 
+            WHERE parent_category = ?''', ("Root",))
+    
+    # Preprocessing into a string
+    categories = [row[0] for row in cursor.fetchall()]
+
+    # Mock pagination
+    class Pagination:
+        def __init__(self):
+            self.page = 1
+            self.per_page = 10
+            self.total = 3
+            self.has_prev = False
+            self.has_next = False
+            self.prev_num = None
+            self.next_num = None
+        
+        def iter_pages(self):
+            return [1]
+    
+    pagination = Pagination()
+
+    return render_template('productListings.html', 
+                          products=products,
+                          categories=categories,
+                          pagination=pagination,
+                          selected_category = selected_category
+                          )
+
+@app.route('/createProductListing', methods=['GET', 'POST'])
+def createProductListing():
+    user = session.get('user', {})
+        
+    sellerEmail = user.get('email')
+    listingID = uuid.uuid4().hex
+    productTitle = request.form.get('productTitle')
+    productName = request.form.get('productName')
+    description = request.form.get('description')
+    category = request.form.get('category')
+    price = request.form.get('price')
+    quantity = request.form.get('quantity')
+        
+    if request.method == "POST":
+        try:
+            seller = session['user']
+            sellerEmail = seller.id
+            
+            # Add the seller to database
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute('''
+                INSERT INTO Product_Listings(Seller_Email, Listing_ID, Category, Product_Title, Product_Name, Product_Description, Quantity, Product_Price, Status)
+                VALUES(?,?)
+            ''', (sellerEmail, listingID, category, productTitle, productName, description, quantity, price, True))
+            connection.commit()
+            connection.close()
+            
+            message = f'{productTitle} Listed'
+            success = True
+            flash((message, success))
+            
+            return redirect(url_for('login'))
+        except Exception as e:
+            message = f'Failed to list product: {e}'
+            success = False
+        #finally:
+            #if connection:
+                #connection.close()
+                
+    return render_template('createProductListing.html')
 
 @app.route('/dashboard')
 def dashboard():
