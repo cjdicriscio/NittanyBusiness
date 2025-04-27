@@ -7,7 +7,7 @@ Required Features:
 3. Product Listing Management - Sean/Colton 🛠️
 4. Order Management - Jeff 🛠️
 5. Product & Seller Review - Javier 🛠️
-6. Product Search - Javier 🛠️
+6. Product Search - Javier ✅
 7. User Registration - Colton 🛠️
 8. User Profile Update - Sean 🛠️
 
