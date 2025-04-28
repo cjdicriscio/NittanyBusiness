@@ -132,8 +132,11 @@ FK := foreign key
 
 ## Setup Instructions
 
-1. Install required packages: <br>
-   pip install flask flask-sqlalchemy
+1. Install required packages in same directory: <br>
+   pip install -r requirements.txt
+
+2. Run the database intializer: <br>
+   python initialize_db.py
 
 2. Run the application:<br>
    python app.py
@@ -155,3 +158,12 @@ FK := foreign key
 
 - Shopping Cart
 - HelpDesk Support for adding categories
+
+### Citations (Resources used for each technology)
+- SQLite: https://www.sqlitetutorial.net/
+- Flask: https://flask.palletsprojects.com/en/stable/tutorial/
+- Python: https://docs.python.org/3/tutorial/index.html 
+- Bootstrap: https://getbootstrap.com/docs/4.1/getting-started/introduction/
+- HTML: https://developer.mozilla.org/en-US/docs/Web/HTML
+- CSS: https://developer.mozilla.org/en-US/docs/Web/CSS
+- Penn State Lectures and Material for CMPSC 431W provided by Wang-Chien Lee and associates
