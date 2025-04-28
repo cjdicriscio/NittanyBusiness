@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #001E44;">
     <div class="container">
         <a class="navbar-brand" href="#">NittanyBusiness</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -9,15 +9,24 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('products') }}">Products</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('cart') }}">Your Cart</a>
-                </li>
+                {% if user.type == 'Buyer'%}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('products') }}">Products</a>
+                    </li>
+                {% endif %}
+                {% if user.type == 'Buyer' or user.type == 'Seller' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
+                    </li>
+                {% endif %}
+                {% if user.type == 'Help Desk'%}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_requests') }}">Tickets</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_helpdesk_accounts') }}">HelpDesk Accounts</a>
+                    </li>
+                {% endif %}
                 <li class="Profile">
                     <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
                 </li>

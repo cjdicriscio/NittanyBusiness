@@ -9,6 +9,11 @@
 </head>
 <body>
     {% include 'navbar.html' %}
+    {% if message %}
+            <div class="message-box {% if success %}success-message{% else %}error-message{% endif %}">
+                {{ message }}
+            </div>
+    {% endif %}
     <div class="container mt-4">
         <div class="user-welcome">
             <div class="d-flex justify-content-between align-items-center">
@@ -19,6 +24,7 @@
                         <span class="user-type-badge buyer-badge">Buyer Account</span>
                         {% elif user.type == 'Seller' %}
                         <span class="user-type-badge seller-badge">Seller Account</span>
+                        <span class="user-type-badge seller-badge">Balance: ${{ balance }}</span>
                         {% elif user.type == 'Help Desk' %}
                         <span class="user-type-badge helpdesk-badge">HelpDesk Account</span>
                         {% endif %}
@@ -31,7 +37,7 @@
         </div>
         
         <div class="row row-cols-1 row-cols-md-3 g-4">
-            <!-- Common Dashboard Cards for All Users -->
+            {% if user.type == 'Buyer'%}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
@@ -42,7 +48,9 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
+            {% if user.type == 'Buyer' or user.type == 'Seller'%}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
@@ -53,7 +61,8 @@
                     </div>
                 </div>
             </div>
-            
+            {% endif %}
+
             <!-- Buyer-specific Dashboard Cards -->
             {% if user.type == 'Buyer' %}
             <div class="col">

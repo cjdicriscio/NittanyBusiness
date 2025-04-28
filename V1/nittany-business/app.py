@@ -122,6 +122,8 @@ def manage_helpdesk_accounts():
         flash('Only HelpDesk staff can access this page.', 'error')
         return redirect(url_for('dashboard'))
 
+    user = session['user']
+
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
@@ -131,7 +133,9 @@ def manage_helpdesk_accounts():
 
     pending_helpdesks = [{'email': row[0], 'position': row[1]} for row in pending_helpdesks]
 
-    return render_template('manage_helpdesk_accounts.html', pending_helpdesks=pending_helpdesks)
+    return render_template('manage_helpdesk_accounts.html', 
+                           pending_helpdesks=pending_helpdesks,
+                           user=user)
 
 
 # Approve a HelpDesk user
@@ -376,9 +380,12 @@ def products():
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
+    user = session['user']
+
     selected_category = request.args.get('category')
     search_query = request.args.get('search')
     sort_order = request.args.get('sort')  # <-- capture selected sort order
+
 
     # Recursively find all products under the current category
     if selected_category:
@@ -449,31 +456,14 @@ def products():
         cursor.execute('SELECT category_name FROM Categories WHERE parent_category = ?', ('Root',))
 
     categories = [row[0] for row in cursor.fetchall()]
-
-    # Fake pagination (placeholder, later real one)
-    class Pagination:
-        def __init__(self):
-            self.page = 1
-            self.per_page = 10
-            self.total = 3
-            self.has_prev = False
-            self.has_next = False
-            self.prev_num = None
-            self.next_num = None
-
-        def iter_pages(self):
-            return [1]
-
-    pagination = Pagination()
-
     connection.close()
 
     return render_template('products.html',
                            products=products,
                            categories=categories,
-                           pagination=pagination,
                            selected_category=selected_category,
-                           selected_sort=sort_order  # <- keep track of sort choice
+                           selected_sort=sort_order,  # <- keep track of sort choice
+                           user=user
                            )
 
 
@@ -492,6 +482,9 @@ def cart():
 
     # Get cart from session
     cart = session.get('cart', [])
+    
+    for item in cart:
+        item['subtotal'] = float(item['price'].replace('$', '')) * float(item['quantity'])
 
     # ✅ Remove "$" and safely convert to float
     total_price = sum(float(item['price'].replace('$', '')) * int(item['quantity']) for item in cart)
@@ -523,6 +516,8 @@ def checkout(total_price):
     if user['type'] != 'Buyer':
         return redirect(url_for('dashboard'))  # Only Buyers manage payments
 
+    user = session['user']
+
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
@@ -552,7 +547,8 @@ def checkout(total_price):
 
     return render_template('checkout.html', 
                            cards=cards,
-                           total_price=total_price)
+                           total_price=total_price,
+                           user=user)
 
 
 
@@ -598,6 +594,13 @@ def finalize_sale():
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (seller_email, user['id'], listing_id, date_now, quantity, payment))
 
+            # Add to seller balance
+            cursor.execute('''
+                UPDATE Sellers 
+                SET balance = balance + ?
+                WHERE email = ?
+            ''', (payment, seller_email))
+
             # Decrease product quantity #https://www.interviewquery.com/p/sql-count-case-when
             cursor.execute('''
                 UPDATE ProductListings
@@ -633,6 +636,11 @@ def productListings():
 
     selected_category = request.args.get('category')
     sellerEmail = session['user']['id']
+    
+    message, success = None, False
+    flashed = get_flashed_messages(with_categories=True)
+    if flashed:
+        success, message = flashed[0]
 
     # Recursively find all products under the current category
     if selected_category:
@@ -693,26 +701,12 @@ def productListings():
     
     categories = [row[0] for row in cursor.fetchall()]
 
-    class Pagination:
-        def __init__(self):
-            self.page = 1
-            self.per_page = 10
-            self.total = 3
-            self.has_prev = False
-            self.has_next = False
-            self.prev_num = None
-            self.next_num = None
-        
-        def iter_pages(self):
-            return [1]
-    
-    pagination = Pagination()
-
     return render_template('productListings.html', 
                           products=products,
                           categories=categories,
-                          pagination=pagination,
-                          selected_category = selected_category
+                          selected_category = selected_category,
+                          message=message,
+                          success=success
                           )
 
 @app.route('/createProductListing', methods=['GET', 'POST'])
@@ -786,18 +780,18 @@ def createProductListing():
 
             connection.commit()
             message = f'{productTitle} listed successfully!'
-            success = True
-            flash((message, success))
+            success = 'success'
+            flash(message, success)
             return redirect(url_for('productListings'))
 
         except ValueError as ve:
             message = f'Invalid input: {ve}'
-            success = False
-            flash((message, success))
+            success = 'error'
+            flash(message, success)
         except Exception as e:
             message = f'Failed to list product: {e}'
-            success = False
-            flash((message, success))
+            success = 'error'
+            flash(message, success)
         finally:
             if 'connection' in locals():
                 connection.close()
@@ -876,8 +870,8 @@ def editProductListing():
             connection.commit()
             
             message = f'{productTitle} Updated!'
-            success = True
-            flash((message, success))
+            success = 'success'
+            flash(message, success)
             
             return redirect(url_for('productListings'))
         except Exception as e:
@@ -915,14 +909,15 @@ def deleteProductListing():
             connection.commit()
             
             message = f'Deleted!'
-            success = True
-            flash((message, success))
+            success = 'success'
+            flash(message, success)
             
             return redirect(url_for('productListings'))
         except Exception as e:
             print(e)
             message = f'Failed to delete product: {e}'
-            success = False
+            success = 'error'
+            flash(message, success)
         finally:
             if connection:
                 connection.close()
@@ -932,6 +927,12 @@ def deleteProductListing():
 
 @app.route('/dashboard')
 def dashboard():
+    message, success = None, False
+
+    flashed = get_flashed_messages(with_categories=True)
+    if flashed:
+        success, message = flashed[0]
+            
     # Check if user is logged in
     if 'user' not in session:
         return redirect(url_for('login'))
@@ -943,7 +944,20 @@ def dashboard():
     else:
         user['last_login'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    return render_template('dashboard.html', user=user)
+    if (user['type'] == 'Seller'):
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute('''
+            SELECT (balance)
+            FROM Sellers S
+            WHERE S.email = ?
+            ''', (user['id'],))
+        balance = cursor.fetchone()[0]
+    else:
+        balance = 0
+
+
+    return render_template('dashboard.html', user=user, message=message, success=success, balance=balance)
 
 @app.route('/logout')
 def logout():
@@ -958,21 +972,6 @@ def logout():
 def orders():
     user = session.get('user', {})
 
-    class Pagination:
-        def __init__(self):
-            self.page = 1
-            self.per_page = 10
-            self.total = 3
-            self.has_prev = False
-            self.has_next = False
-            self.prev_num = None
-            self.next_num = None
-        
-        def iter_pages(self):
-            return [1]
-    
-    pagination = Pagination()
-    print(user)
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
     
@@ -1037,7 +1036,6 @@ def orders():
 
     return render_template('orders.html', 
                            user=user,
-                           pagination=pagination,
                            orders=orders
                            )
 
@@ -1109,7 +1107,9 @@ def leave_review(order_id):
 
 @app.route('/thank_you')
 def thank_you():
-    return render_template('thank_you.html')
+    user = session['user']
+    return render_template('thank_you.html',
+                           user=user)
 
 
 @app.route('/wishlist')
@@ -1130,6 +1130,8 @@ def update_request(request_id):
         flash('You must be Help Desk to access this page.', 'error')
         return redirect(url_for('dashboard'))
     
+    user = session['user']
+
     if request.method == 'POST':
         new_category = request.form.get('new_category')
         parent_category = request.form.get('parent_category')
@@ -1213,8 +1215,9 @@ def update_request(request_id):
         flash('Request updated successfully!', 'success')
         return redirect(url_for('manage_requests'))
 
-    return render_template('update_request.html', request_id=request_id)
-
+    return render_template('update_request.html', 
+                           request_id=request_id,
+                           user=user)
 
 @app.route('/manage_requests')
 def manage_requests():
@@ -1226,6 +1229,8 @@ def manage_requests():
         flash('You must be Help Desk to access this page.', 'error')
         return redirect(url_for('dashboard'))
     
+    user = session['user']
+
     try:
         connection = sql.connect(DATABASE)
         cursor = connection.cursor()
@@ -1248,7 +1253,9 @@ def manage_requests():
         if connection:
             connection.close() 
 
-    return render_template('manage_requests.html', requests=requests)
+    return render_template('manage_requests.html', 
+                           requests=requests,
+                           user=user)
 
 @app.route('/claim_requests', methods=['GET', 'POST'])
 def claim_requests():
@@ -1342,7 +1349,9 @@ def payment_methods():
     cards = cursor.fetchall()
     connection.close()
 
-    return render_template('payment_methods.html', cards=cards)
+    return render_template('payment_methods.html', 
+                           cards=cards,
+                           user=user)
 
 
 @app.route('/delete_card/<card_num>', methods=['POST'])
@@ -1445,6 +1454,13 @@ def profile():
         flash('You must be logged in to access your profile.', 'error')
         return redirect(url_for('login'))
     user = session['user']
+    
+    flashed = get_flashed_messages(with_categories=True)
+    if flashed:
+        category, message = flashed[0]
+        success = (category == 'success')
+    else:
+        message, success = None, False
 
     if request.method == 'POST':
         
@@ -1474,9 +1490,11 @@ def profile():
                     WHERE email = ?
                 """, (new_hashed_password, email))
                 connection.commit()
-                #flash('Password updated successfully!', 'success')
+                flash('Password updated successfully!', 'success')
+                return redirect(url_for('dashboard'))
             else:
                 flash('Invalid passcode.', 'error')
+                success = False
                 return redirect(url_for('profile'))
             
         except Exception as e:
@@ -1485,7 +1503,7 @@ def profile():
             if connection:
                 connection.close() 
         
-    return render_template('profile.html', user=user)
+    return render_template('profile.html', user=user, message=message, success=success)
 
 @app.route('/submit_request', methods=['GET', 'POST'])
 def submit_request():
