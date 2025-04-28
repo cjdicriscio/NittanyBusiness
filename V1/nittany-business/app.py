@@ -296,6 +296,8 @@ def products():
     cursor = connection.cursor()
 
     selected_category = request.args.get('category')
+    search_query = request.args.get('search') # instance to search
+
 
     # Recursively find all products under the current category
     if (selected_category):
@@ -323,6 +325,23 @@ def products():
     attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
+    # Search query
+    if search_query:
+        products = [
+            product for product in products
+            if search_query.lower() in product['name'].lower() or search_query.lower() in product['description'].lower()
+        ]
+
+
+    # Find Seller names for display 
+    for product in products:
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Sellers S
+            WHERE S.email = ?
+        ''', (product['sellerEmail'],))
+        product['seller_name'] = cursor.fetchone()[0]
+        print(product['seller_name'])
 
     # Find subcategories one level below current category
     if (selected_category):
@@ -362,13 +381,117 @@ def products():
             return [1]
     
     pagination = Pagination()
-    print(selected_category)
+
     return render_template('products.html', 
                           products=products,
                           categories=categories,
                           pagination=pagination,
                           selected_category = selected_category
                           )
+
+#Cart section
+@app.route('/cart')
+def cart():
+    # Make sure user is logged in
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    user = session['user']
+
+    # Only buyers can access the cart
+    if user['type'] != 'Buyer':
+        return redirect(url_for('dashboard'))
+
+    # Get cart from session
+    cart = session.get('cart', [])
+
+    # ✅ Remove "$" and safely convert to float
+    total_price = sum(float(item['price'].replace('$', '')) * int(item['quantity']) for item in cart)
+
+    return render_template('cart.html', user=user, cart=cart, total_price=total_price)
+
+#route to remove the selected item
+@app.route('/remove_from_cart/<int:listing_id>', methods=['POST'])
+def remove_from_cart(listing_id):
+    if 'cart' not in session:
+        return redirect(url_for('cart'))
+
+    cart = session['cart']
+
+    # Keep only the items that are NOT the one we are removing
+    cart = [item for item in cart if item['listing_id'] != listing_id]
+
+    session['cart'] = cart  # Save updated cart back into session
+
+    flash('Item removed from cart.', 'success')
+    return redirect(url_for('cart'))
+
+
+@app.route('/checkout', methods=['POST'])
+def checkout():
+    if 'user' not in session:
+        flash('You must be logged in to checkout.', 'error')
+        return redirect(url_for('login'))
+
+    user = session['user']
+
+    if user['type'] != 'Buyer':
+        flash('Only buyers can checkout.', 'error')
+        return redirect(url_for('dashboard'))
+
+    cart = session.get('cart', [])
+
+    if not cart:
+        flash('Your cart is empty.', 'error')
+        return redirect(url_for('cart'))
+
+    try:
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+
+        for item in cart:
+            listing_id = item['listing_id']
+            quantity = item['quantity']
+            price = float(item['price'].replace('$', '')) if isinstance(item['price'], str) else float(item['price'])
+            payment = price * int(quantity)
+            date_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            # Get seller email safely
+            cursor.execute('SELECT seller_email FROM ProductListings WHERE listing_id = ?', (listing_id,))
+            result = cursor.fetchone()
+            if not result:
+                continue  # skip if somehow product not found
+            seller_email = result[0]
+
+            # Insert the order
+            cursor.execute('''
+                INSERT INTO Orders (seller_email, buyer_email, listing_id, date, quantity, payment)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (seller_email, user['id'], listing_id, date_now, quantity, payment))
+
+            # Decrease product quantity
+            cursor.execute('''
+                UPDATE ProductListings
+                SET quantity = quantity - ?
+                WHERE listing_id = ?
+            ''', (quantity, listing_id))
+
+        connection.commit()
+
+        # Clear cart after successful checkout
+        session['cart'] = []
+        flash('Checkout successful! Your orders have been placed.', 'success')
+        return redirect(url_for('thank_you'))
+
+    except Exception as e:
+        print(f"Checkout Error: {e}")
+        flash('An error occurred during checkout. Please try again.', 'error')
+        return redirect(url_for('cart'))
+
+    finally:
+        if connection:
+            connection.close()
+
 
 @app.route('/productListings', methods=['GET', 'POST'])
 def productListings():
@@ -403,9 +526,18 @@ def productListings():
         ''', (sellerEmail,))
 
     # Preprocess the products into a better format for HTML
-    attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
+    attributes = ['seller_email', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
+    # Find Seller names for display 
+    for product in products:
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Sellers S
+            WHERE S.email = ?
+        ''', (product['seller_email'],))
+        product['seller_name'] = cursor.fetchone()[0]
+        print(product['seller_name'])
 
     # Find subcategories one level below current category
     if (selected_category):
@@ -622,7 +754,76 @@ def logout():
 # Placeholder routes for dashboard links
 @app.route('/orders')
 def orders():
-    return "Orders Page"
+    user = session.get('user', {})
+    class Pagination:
+        def __init__(self):
+            self.page = 1
+            self.per_page = 10
+            self.total = 3
+            self.has_prev = False
+            self.has_next = False
+            self.prev_num = None
+            self.next_num = None
+        
+        def iter_pages(self):
+            return [1]
+    
+    pagination = Pagination()
+    print(user)
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+    cursor.execute('''
+        SELECT *
+        FROM Orders O
+        WHERE buyer_email = ?
+        ORDER BY date DESC
+    ''', (user['id'],))
+
+    
+    attributes = ['order_id', 'seller_email', 'buyer_email', 'listing_id', 'date', 'quantity', 'payment']
+    orders = [dict(zip(attributes, row)) for row in cursor.fetchall()]
+    
+     
+    for order in orders:
+        # Find Seller names for display
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Sellers S
+            WHERE S.email = ?
+        ''', (order['seller_email'],))
+        order['seller_name'] = cursor.fetchone()[0]
+
+        # Find buyer names for display
+        cursor.execute('''
+            SELECT (business_name)
+            FROM Buyers B
+            WHERE B.email = ?
+        ''', (order['buyer_email'],))
+        order['buyer_name'] = cursor.fetchone()[0]
+
+        # Find product in the order
+        cursor.execute('''
+            SELECT product_title, product_name
+            FROM ProductListings P
+            WHERE P.listing_id = ?
+        ''', (order['listing_id'],))
+        temp = cursor.fetchone()
+        print(temp, "hey")
+        order['product_title'] = temp[0]
+        order['product_name'] = temp[1]
+        print(order)
+        print(order['product_name'])
+
+    return render_template('orders.html', 
+                           user=user,
+                           pagination=pagination,
+                           orders=orders
+                           )
+
+@app.route('/thank_you')
+def thank_you():
+    return render_template('thank_you.html')
+
 
 @app.route('/wishlist')
 def wishlist():
@@ -720,9 +921,59 @@ def manage_requests():
 
     return render_template('manage_requests.html', requests=requests)
 
-@app.route('/payment_methods')
+@app.route('/payment_methods', methods=['GET', 'POST'])
 def payment_methods():
-    return "Payment Methods Page"
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    user = session['user']
+    if user['type'] != 'Buyer':
+        return redirect(url_for('dashboard'))  # Only Buyers manage payments
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    if request.method == 'POST':
+        # Add new credit card
+        credit_card_num = request.form.get('credit_card_num')
+        card_type = request.form.get('card_type')
+        expire_month = request.form.get('expire_month')
+        expire_year = request.form.get('expire_year')
+        security_code = request.form.get('security_code')
+
+        if credit_card_num and card_type and expire_month and expire_year and security_code:
+            try:
+                cursor.execute('''
+                    INSERT INTO CreditCards (credit_card_num, card_type, expire_month, expire_year, security_code, owner_email)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (credit_card_num, card_type, expire_month, expire_year, security_code, user['id']))
+                connection.commit()
+                flash('Credit card added successfully!', 'success')
+            except Exception as e:
+                flash(f'Failed to add credit card: {e}', 'danger')
+
+    # Fetch buyer's saved cards
+    cursor.execute('SELECT credit_card_num, card_type, expire_month, expire_year FROM CreditCards WHERE owner_email = ?', (user['id'],))
+    cards = cursor.fetchall()
+    connection.close()
+
+    return render_template('payment_methods.html', cards=cards)
+
+@app.route('/delete_card/<card_num>', methods=['POST'])
+def delete_card(card_num):
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+    cursor.execute('DELETE FROM CreditCards WHERE credit_card_num = ? AND owner_email = ?', (card_num, session['user']['id']))
+    connection.commit()
+    connection.close()
+
+    flash('Credit card removed.', 'success')
+    return redirect(url_for('payment_methods'))
+
+
 
 @app.route('/sales_analytics')
 def sales_analytics():
@@ -823,7 +1074,52 @@ def submit_request():
 
 @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
-    # Add to cart logic here
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    # ✅ Using correct column names from your ProductListings table
+    cursor.execute('''
+        SELECT seller_email, listing_id, category, product_title, product_name, product_description, quantity, product_price, status
+        FROM ProductListings
+        WHERE listing_id = ?
+    ''', (product_id,))
+    product_row = cursor.fetchone()
+    connection.close()
+
+    if not product_row:
+        flash('Product not found.', 'danger')
+        return redirect(url_for('products'))
+
+    attributes = ['seller_email', 'listing_id', 'category', 'product_title', 'product_name', 'product_description', 'quantity', 'product_price', 'status']
+    product = dict(zip(attributes, product_row))
+
+    # Initialize cart if not present
+    if 'cart' not in session:
+        session['cart'] = []
+
+    cart = session['cart']
+
+        # Read quantity from form
+    form_quantity = int(request.form.get('quantity', 1))  # Default to 1 if missing
+
+    for item in cart:
+        if item['listing_id'] == product['listing_id']:
+            # If already exists, increase quantity
+            item['quantity'] += form_quantity
+            break
+
+    else:
+        # Otherwise add new product
+        cart.append({
+            'listing_id': product['listing_id'],
+            'name': product['product_name'],
+            'price': product['product_price'],
+            'quantity': 1
+        })
+
+    session['cart'] = cart  # Save cart back into session
+    flash('Product added to cart!', 'success')
+
     return redirect(url_for('products'))
 
 @app.route('/buy_now/<int:product_id>')
