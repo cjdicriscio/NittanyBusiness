@@ -426,9 +426,50 @@ def remove_from_cart(listing_id):
     flash('Item removed from cart.', 'success')
     return redirect(url_for('cart'))
 
+@app.route('/checkout/<int:total_price>', methods=['POST'])
+def checkout(total_price):
+    if 'user' not in session:
+        return redirect(url_for('login'))
 
-@app.route('/checkout', methods=['POST'])
-def checkout():
+    user = session['user']
+    if user['type'] != 'Buyer':
+        return redirect(url_for('dashboard'))  # Only Buyers manage payments
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    if request.method == 'POST':
+        # Add new credit card
+        credit_card_num = request.form.get('credit_card_num')
+        card_type = request.form.get('card_type')
+        expire_month = request.form.get('expire_month')
+        expire_year = request.form.get('expire_year')
+        security_code = request.form.get('security_code')
+
+        if credit_card_num and card_type and expire_month and expire_year and security_code:
+            try:
+                cursor.execute('''
+                    INSERT INTO CreditCards (credit_card_num, card_type, expire_month, expire_year, security_code, owner_email)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (credit_card_num, card_type, expire_month, expire_year, security_code, user['id']))
+                connection.commit()
+                flash('Credit card added successfully!', 'success')
+            except Exception as e:
+                flash(f'Failed to add credit card: {e}', 'danger')
+
+    # Fetch buyer's saved cards
+    cursor.execute('SELECT credit_card_num, card_type, expire_month, expire_year FROM CreditCards WHERE owner_email = ?', (user['id'],))
+    cards = cursor.fetchall()
+    connection.close()
+
+    return render_template('checkout.html', 
+                           cards=cards,
+                           total_price=total_price)
+
+
+
+@app.route('/finalize_sale', methods=['POST'])
+def finalize_sale():
     if 'user' not in session:
         flash('You must be logged in to checkout.', 'error')
         return redirect(url_for('login'))
@@ -479,8 +520,6 @@ def checkout():
                             END
                 WHERE listing_id = ?
             ''', (quantity, quantity, listing_id))
-            
-            
 
         connection.commit()
 
@@ -1172,8 +1211,9 @@ def add_to_cart(product_id):
 
     cart = session['cart']
 
-        # Read quantity from form
+    # Read quantity from form
     form_quantity = int(request.form.get('quantity', 1))  # Default to 1 if missing
+    print(form_quantity)
 
     for item in cart:
         if item['listing_id'] == product['listing_id']:
@@ -1187,7 +1227,7 @@ def add_to_cart(product_id):
             'listing_id': product['listing_id'],
             'name': product['product_name'],
             'price': product['product_price'],
-            'quantity': 1
+            'quantity': form_quantity
         })
 
     session['cart'] = cart  # Save cart back into session

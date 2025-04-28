@@ -8,37 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="#">NittanyBusiness</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('dashboard') }}">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('products') }}">Products</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('cart') }}">Your Cart</a>
-                    </li>
-                    <li class="Profile">
-                        <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Logout</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
+    {% include 'navbar.html' %}
     <div class="container mt-4">
         <div class="user-welcome">
             <div class="d-flex justify-content-between align-items-center">
@@ -121,7 +91,7 @@
                         <div class="dashboard-icon">🎫</div>
                         <h5 class="card-title">Manage Tickets</h5>
                         <p class="card-text">View and respond to customer support tickets.</p>
-                        <a href="{{ url_for('manage_tickets') }}" class="btn btn-primary">Manage Tickets</a>
+                        <a href="{{ url_for('manage_requests') }}" class="btn btn-primary">Manage Tickets</a>
                     </div>
                 </div>
             </div>

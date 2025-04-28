@@ -31,7 +31,7 @@ def create_helpdesk_table():
         CREATE TABLE IF NOT EXISTS Helpdesk (
             email TEXT PRIMARY KEY,
             position TEXT NOT NULL,
-            FOREIGN KEY (email) REFERENCES Users (email)
+            FOREIGN KEY (email) REFERENCES Users (email) ON UPDATE CASCADE
         );
     ''')
     connection.commit()
@@ -49,7 +49,7 @@ def create_requests_table():
             request_type TEXT NOT NULL,
             request_desc TEXT NOT NULL,
             request_status INTEGER NOT NULL,
-            FOREIGN KEY (sender_email) REFERENCES Users (email),
+            FOREIGN KEY (sender_email) REFERENCES Users (email) ON UPDATE CASCADE,
             FOREIGN KEY (helpdesk_staff_email) REFERENCES Helpdesk (email)
         );
     ''')
@@ -65,7 +65,7 @@ def create_buyers_table():
             email TEXT PRIMARY KEY,
             business_name TEXT NOT NULL,
             buyer_address_id TEXT NOT NULL,
-            FOREIGN KEY (email) REFERENCES Users (email),
+            FOREIGN KEY (email) REFERENCES Users (email) ON UPDATE CASCADE,
             FOREIGN KEY (buyer_address_id) REFERENCES Address (address_id)
         );
     ''')
@@ -84,7 +84,7 @@ def create_creditcards_table():
             expire_year INTEGER NOT NULL,
             security_code INTEGER NOT NULL,
             owner_email TEXT NOT NULL,
-            FOREIGN KEY (owner_email) REFERENCES Buyers (email)
+            FOREIGN KEY (owner_email) REFERENCES Buyers (email) ON UPDATE CASCADE
         );
     ''')
     connection.commit()
@@ -132,7 +132,7 @@ def create_sellers_table():
             bank_routing_number INTEGER NOT NULL,
             bank_account_number INTEGER NOT NULL,
             balance INTEGER NOT NULL,
-            FOREIGN KEY (email) REFERENCES Users (email),
+            FOREIGN KEY (email) REFERENCES Users (email) ON UPDATE CASCADE,
             FOREIGN KEY (business_address_id) REFERENCES Address (address_id)
         );
     ''')
@@ -169,7 +169,7 @@ def create_productlistings_table():
             product_price INTEGER NOT NULL,
             status INTEGER NOT NULL,
             PRIMARY KEY (seller_email, listing_id),
-            FOREIGN KEY (seller_email) REFERENCES Sellers (email),
+            FOREIGN KEY (seller_email) REFERENCES Sellers (email) ON UPDATE CASCADE,
             FOREIGN KEY (category) REFERENCES Categories (category_name)
         );
     ''')
@@ -189,8 +189,8 @@ def create_orders_table():
             date DATE NOT NULL,
             quantity INTEGER NOT NULL,
             payment INTEGER NOT NULL,
-            FOREIGN KEY (seller_email) REFERENCES Sellers (email),
-            FOREIGN KEY (buyer_email) REFERENCES Buyers (email),
+            FOREIGN KEY (seller_email) REFERENCES Sellers (email) ON UPDATE CASCADE,
+            FOREIGN KEY (buyer_email) REFERENCES Buyers (email) ON UPDATE CASCADE,
             FOREIGN KEY (listing_id) REFERENCES ProductListings (listing_id)
         );
     ''')
