@@ -45,11 +45,6 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        #demo credentials if no Database, remove in full ver.
-        if email == 'demo@example.com' and password == 'password':
-            session['user'] = {'id': 'email', 'name': 'userName', 'type': 'userType'}
-            return redirect(url_for('dashboard'))
-        
         hashed_password = hash_password(password)
 
         try:
