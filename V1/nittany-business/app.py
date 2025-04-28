@@ -469,12 +469,18 @@ def checkout():
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (seller_email, user['id'], listing_id, date_now, quantity, payment))
 
-            # Decrease product quantity
+            # Decrease product quantity #https://www.interviewquery.com/p/sql-count-case-when
             cursor.execute('''
                 UPDATE ProductListings
-                SET quantity = quantity - ?
+                SET quantity = quantity - ?,
+                    Status = CASE
+                                WHEN quantity - ? <= 0 THEN 2
+                                ELSE Status
+                            END
                 WHERE listing_id = ?
-            ''', (quantity, listing_id))
+            ''', (quantity, quantity, listing_id))
+            
+            
 
         connection.commit()
 
