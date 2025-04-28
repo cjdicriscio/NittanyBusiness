@@ -406,7 +406,10 @@ def products():
     if search_query:
         products = [
             product for product in products
-            if search_query.lower() in product['product_name'].lower() or search_query.lower() in product['product_description'].lower()
+            if (search_query.lower() in product['product_name'].lower() or 
+                search_query.lower() in product['product_description'].lower() or
+                search_query.lower() in product['product_title'].lower() or
+                search_query.lower() in product['seller_email'].lower())
         ]
 
     # Price range filter (also in memory after fetching)
