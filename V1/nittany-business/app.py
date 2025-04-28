@@ -517,6 +517,8 @@ def checkout(total_price):
     if user['type'] != 'Buyer':
         return redirect(url_for('dashboard'))  # Only Buyers manage payments
 
+    user = session['user']
+
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
@@ -546,7 +548,8 @@ def checkout(total_price):
 
     return render_template('checkout.html', 
                            cards=cards,
-                           total_price=total_price)
+                           total_price=total_price,
+                           user=user)
 
 
 @app.route('/finalize_sale', methods=['POST'])
@@ -590,6 +593,13 @@ def finalize_sale():
                 INSERT INTO Orders (seller_email, buyer_email, listing_id, date, quantity, payment)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (seller_email, user['id'], listing_id, date_now, quantity, payment))
+
+            # Add to seller balance
+            cursor.execute('''
+                UPDATE Sellers 
+                SET balance = balance + ?
+                WHERE email = ?
+            ''', (payment, seller_email))
 
             # Decrease product quantity #https://www.interviewquery.com/p/sql-count-case-when
             cursor.execute('''
@@ -937,7 +947,20 @@ def dashboard():
     else:
         user['last_login'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    return render_template('dashboard.html', user=user, message=message, success=success)
+    if (user['type'] == 'Seller'):
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute('''
+            SELECT (balance)
+            FROM Sellers S
+            WHERE S.email = ?
+            ''', (user['id'],))
+        balance = cursor.fetchone()[0]
+    else:
+        balance = 0
+
+
+    return render_template('dashboard.html', user=user, message=message, success=success, balance=balance)
 
 @app.route('/logout')
 def logout():
@@ -1087,7 +1110,9 @@ def leave_review(order_id):
 
 @app.route('/thank_you')
 def thank_you():
-    return render_template('thank_you.html')
+    user = session['user']
+    return render_template('thank_you.html',
+                           user=user)
 
 
 @app.route('/wishlist')
@@ -1212,7 +1237,7 @@ def manage_requests():
     try:
         connection = sql.connect(DATABASE)
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM Requests WHERE request_status = 0")
+        cursor.execute("SELECT * FROM Requests WHERE request_status = 0 AND helpdesk_staff_email = ?", (session['user']['id'],))
         requests_list = cursor.fetchall()
         requests = []
         for i,x in enumerate(requests_list):
@@ -1234,6 +1259,58 @@ def manage_requests():
     return render_template('manage_requests.html', 
                            requests=requests,
                            user=user)
+
+@app.route('/claim_requests', methods=['GET', 'POST'])
+def claim_requests():
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    
+    elif session['user']['type'] != 'Help Desk':
+        flash('You must be Help Desk to access this page.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        request_id = request.form.get('request_id')
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute("""
+                UPDATE Requests
+                SET helpdesk_staff_email = ?
+                WHERE request_id = ?
+            """, (session['user']['id'], request_id))
+            connection.commit()
+                
+        except Exception as e:
+            print(e)
+        finally:
+            if connection:
+                connection.close()
+
+    requests = []
+    try:
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Requests WHERE request_status = 0 AND helpdesk_staff_email = ?", ('helpdeskteam@nittybiz.com',))
+        requests_list = cursor.fetchall()
+        for i,x in enumerate(requests_list):
+            requests.append({})
+            requests[i]['request_id'] = x[0]
+            requests[i]['sender_email'] = x[1]
+            requests[i]['helpdesk_email'] = x[2]
+            requests[i]['request_type'] = x[3]
+            requests[i]['request_desc'] = x[4]
+            requests[i]['request_status'] = x[5]
+        connection.commit()
+            
+    except Exception as e:
+        print(e)
+    finally:
+        if connection:
+            connection.close()
+
+    return render_template('claim_requests.html', requests=requests)
 
 @app.route('/payment_methods', methods=['GET', 'POST'])
 def payment_methods():

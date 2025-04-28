@@ -24,6 +24,7 @@
                         <span class="user-type-badge buyer-badge">Buyer Account</span>
                         {% elif user.type == 'Seller' %}
                         <span class="user-type-badge seller-badge">Seller Account</span>
+                        <span class="user-type-badge seller-badge">Balance: ${{ balance }}</span>
                         {% elif user.type == 'Help Desk' %}
                         <span class="user-type-badge helpdesk-badge">HelpDesk Account</span>
                         {% endif %}
@@ -111,6 +112,17 @@
                         <h5 class="card-title">Manage Tickets</h5>
                         <p class="card-text">View and respond to customer support tickets.</p>
                         <a href="{{ url_for('manage_requests') }}" class="btn btn-primary">Manage Tickets</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card dashboard-card">
+                    <div class="card-body text-center">
+                        <div class="dashboard-icon">✋</div>
+                        <h5 class="card-title">Claim HelpDesk Tickets</h5>
+                        <p class="card-text">Claim unclaimed helpdesk tickets.</p>
+                        <a href="{{ url_for('claim_requests') }}" class="btn btn-primary">Claim Tickets</a>
                     </div>
                 </div>
             </div>

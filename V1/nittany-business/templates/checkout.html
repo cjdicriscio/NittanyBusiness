@@ -38,15 +38,14 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <form method="POST" action="{{ url_for('finalize_sale') }}" class="row">
+                <h3>Total Price: ${{total_price}}</h3>
+                <button class="btn btn-primary" type="submit" style="width: 25%">Submit Payment</button>
+            </form>
         {% else %}
             <div class="alert alert-info">No credit cards saved. Add one below!</div>
         {% endif %}
-
-        <form method="POST" action="{{ url_for('finalize_sale') }}" class="row">
-          <h3>Total Price: ${{total_price}}</h3>
-          <button class="btn btn-primary" type="submit" style="width: 25%">Submit Payment</button>
-        </form>
-
+        
         <!-- Form to add a new card -->
         <h4 class="mt-5">Add New Credit Card</h4>
         <form method="POST" action="{{ url_for('checkout', total_price=total_price) }}" class="row g-3">
