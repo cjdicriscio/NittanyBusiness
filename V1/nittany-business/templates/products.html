@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #001E44;">
         <div class="container">
             <a class="navbar-brand" href="#">NittanyBusiness</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -16,133 +16,122 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('products') }}">Products</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-                    </li>
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                        </li>
+                        {% if user.type == 'Buyer'%}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('products') }}">Products</a>
+                            </li>
+                        {% endif %}
+                        {% if user.type == 'Buyer' or user.type == 'Seller' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
+                            </li>
+                        {% endif %}
+                        {% if user.type == 'Help Desk'%}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('manage_requests') }}">Tickets</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('manage_helpdesk_accounts') }}">HelpDesk Accounts</a>
+                            </li>
+                        {% endif %}
+                    </ul>
                 </ul>
-                <form class="d-flex" method="GET" action="{{ url_for('products') }}">
-                    <input class="form-control me-2" type="search" placeholder="Search products" name="search" value="{{ search_query }}">
-                    <button class="btn btn-light" type="submit">Search</button>
-                </form>
+                <div class="d-flex align-items-center">
+                    <form class="d-flex me-3" method="GET" action="{{ url_for('products') }}">
+                        <input class="form-control me-2" type="search" placeholder="Search products" name="search">
+                        <button class="btn btn-light" type="submit">Search</button>
+                    </form>
+
+                    <!-- New Cart Button -->
+                    <a href="{{ url_for('cart') }}" class="btn btn-light position-relative me-2">
+                        🛒
+                        {% if session.get('cart') %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ session['cart'] | length }}
+                            </span>
+                        {% endif %}
+                    </a>
+
+                    <!-- Logout Button -->
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Logout</a>
+                </div>
+
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
         <h2 class="mb-4">Products</h2>
-
-        <div class="filters mb-4">
+        
+        <div class="filters">
             <form method="GET" action="{{ url_for('products') }}" class="row g-3">
                 <div class="col-md-4">
                     <select class="form-select" name="category">
                         <option value="">All Categories</option>
                         {% for category in categories %}
-                        <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>
+                        <option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>
                             {{ category }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
-
                 <div class="col-md-4">
-                    <select class="form-select" name="price_range">
+                    <select class="form-select" name="price_range" onchange="this.form.submit()">
                         <option value="">Filter by Price Range</option>
                         <option value="0-50" {% if selected_price_range == '0-50' %}selected{% endif %}>$0 - $50</option>
                         <option value="50-200" {% if selected_price_range == '50-200' %}selected{% endif %}>$50 - $200</option>
                         <option value="200-1000" {% if selected_price_range == '200-1000' %}selected{% endif %}>$200 - $1000</option>
                         <option value="1000+" {% if selected_price_range == '1000+' %}selected{% endif %}>$1000+</option>
                     </select>
-                </div>
-
+                </div>                               
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
                 </div>
-
                 {% if search_query %}
-                    <input type="hidden" name="search" value="{{ search_query }}">
-                {% endif %}
+                     <input type="hidden" name="search" value="{{ search_query }}">
+                 {% endif %}
             </form>
         </div>
-
+        
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for product in products %}
             <div class="col">
                 <div class="card product-card">
-                    {% if product.quantity > 0 %}
-                    <span class="badge bg-success stock-badge">In Stock: {{ product.quantity }}</span>
-                    {% else %}
-                    <span class="badge bg-danger stock-badge">Out of Stock</span>
-                    {% endif %}
-
-                    <img src="{{ url_for('static', filename='images/placeholder.jpg') }}" class="card-img-top" alt="{{ product.product_name }}" height="200">
                     <div class="card-body">
                         <h5 class="card-title">{{ product.product_name }}</h5>
                         <p class="product-price">
                             ${{ "%.2f"|format(product.product_price|string|replace(",", "")|replace("$", "")|float) }}
-                        </p>
-                        <p class="card-text product-description">{{ product.product_description }}</p>
-
+                          </p>                          
+                        <p class="card-text product-description">{{ product.description }}</p>
+                        <p class="stock">In Stock: {{ product.quantity }}</p>
+                        <p class="soldby">Sold By: {{ product.seller_name }}</p>
+                        <p class="tag">Tag: {{product.category }}</p>
                         <div class="d-grid gap-2">
                             {% if product.quantity > 0 %}
-                            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.listing_id) }}">
-                                <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
-                            </form>
-                            <!-- <a href="#" class="btn btn-outline-primary">Buy Now (Coming Soon)</a> -->
+                                <form method="POST" action="{{ url_for('add_to_cart', product_id=product.listing_id) }}" class="d-flex flex-column align-items-center">
+                                    <input type="number" name="quantity" class="form-control mb-2" value="1" min="1" max="{{ product.quantity }}" style="width: 80px;">
+                                    <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
+                                </form>
+                                <a href="{{ url_for('product_info', product_id=product.listing_id) }}" class="btn btn-outline-primary">View Info</a>
                             {% else %}
-                            <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
+                                <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
                             {% endif %}
-                        </div>
+                        </div>                        
                     </div>
                 </div>
             </div>
             {% endfor %}
         </div>
-
+        
         {% if not products %}
         <div class="alert alert-info mt-4">
             No products found matching your criteria.
         </div>
         {% endif %}
-
-        <nav aria-label="Page navigation" class="mt-4">
-            <ul class="pagination justify-content-center">
-                {% if pagination.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('products', page=pagination.prev_num, category=selected_category, price_range=selected_price_range, search=search_query) }}">Previous</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">Previous</span>
-                </li>
-                {% endif %}
-
-                {% for page in pagination.iter_pages() %}
-                {% if page %}
-                <li class="page-item {% if page == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('products', page=page, category=selected_category, price_range=selected_price_range, search=search_query) }}">{{ page }}</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">...</span>
-                </li>
-                {% endif %}
-                {% endfor %}
-
-                {% if pagination.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('products', page=pagination.next_num, category=selected_category, price_range=selected_price_range, search=search_query) }}">Next</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">Next</span>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
     </div>
-
 </body>
 </html>
