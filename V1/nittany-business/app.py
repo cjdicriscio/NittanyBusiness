@@ -124,6 +124,8 @@ def manage_helpdesk_accounts():
 
     user = session['user']
 
+    user = session['user']
+
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
@@ -133,6 +135,9 @@ def manage_helpdesk_accounts():
 
     pending_helpdesks = [{'email': row[0], 'position': row[1]} for row in pending_helpdesks]
 
+    return render_template('manage_helpdesk_accounts.html', 
+                           pending_helpdesks=pending_helpdesks,
+                           user=user)
     return render_template('manage_helpdesk_accounts.html', 
                            pending_helpdesks=pending_helpdesks,
                            user=user)
@@ -1105,6 +1110,9 @@ def update_request(request_id):
     
     user = session['user']
 
+    
+    user = session['user']
+
     if request.method == 'POST':
         new_category = request.form.get('new_category')
         parent_category = request.form.get('parent_category')
@@ -1191,6 +1199,9 @@ def update_request(request_id):
     return render_template('update_request.html', 
                            request_id=request_id,
                            user=user)
+    return render_template('update_request.html', 
+                           request_id=request_id,
+                           user=user)
 
 @app.route('/manage_requests')
 def manage_requests():
@@ -1226,6 +1237,9 @@ def manage_requests():
         if connection:
             connection.close() 
 
+    return render_template('manage_requests.html', 
+                           requests=requests,
+                           user=user)
     return render_template('manage_requests.html', 
                            requests=requests,
                            user=user)
@@ -1270,6 +1284,9 @@ def payment_methods():
     cards = cursor.fetchall()
     connection.close()
 
+    return render_template('payment_methods.html', 
+                           cards=cards,
+                           user=user)
     return render_template('payment_methods.html', 
                            cards=cards,
                            user=user)
