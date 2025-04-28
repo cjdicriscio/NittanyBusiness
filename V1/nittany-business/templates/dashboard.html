@@ -111,6 +111,17 @@
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
                         <div class="dashboard-icon">✅</div>
+                        <h5 class="card-title">Claim HelpDesk Tickets</h5>
+                        <p class="card-text">Claim unclaimed helpdesk tickets.</p>
+                        <a href="{{ url_for('claim_requests') }}" class="btn btn-primary">Claim Tickets</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card dashboard-card">
+                    <div class="card-body text-center">
+                        <div class="dashboard-icon">✅</div>
                         <h5 class="card-title">Manage HelpDesk Accounts</h5>
                         <p class="card-text">Approve or manage pending HelpDesk staff applications.</p>
                         <a href="{{ url_for('manage_helpdesk_accounts') }}" class="btn btn-primary">Manage Accounts</a>

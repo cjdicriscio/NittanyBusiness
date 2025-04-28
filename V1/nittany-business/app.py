@@ -1229,7 +1229,7 @@ def manage_requests():
     try:
         connection = sql.connect(DATABASE)
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM Requests WHERE request_status = 0")
+        cursor.execute("SELECT * FROM Requests WHERE request_status = 0 AND helpdesk_staff_email = ?", (session['user']['id'],))
         requests_list = cursor.fetchall()
         requests = []
         for i,x in enumerate(requests_list):
@@ -1249,6 +1249,58 @@ def manage_requests():
             connection.close() 
 
     return render_template('manage_requests.html', requests=requests)
+
+@app.route('/claim_requests', methods=['GET', 'POST'])
+def claim_requests():
+    if 'user' not in session:
+        flash('You must be logged in to access your profile.', 'error')
+        return redirect(url_for('login'))
+    
+    elif session['user']['type'] != 'Help Desk':
+        flash('You must be Help Desk to access this page.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        request_id = request.form.get('request_id')
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute("""
+                UPDATE Requests
+                SET helpdesk_staff_email = ?
+                WHERE request_id = ?
+            """, (session['user']['id'], request_id))
+            connection.commit()
+                
+        except Exception as e:
+            print(e)
+        finally:
+            if connection:
+                connection.close()
+
+    requests = []
+    try:
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Requests WHERE request_status = 0 AND helpdesk_staff_email = ?", ('helpdeskteam@nittybiz.com',))
+        requests_list = cursor.fetchall()
+        for i,x in enumerate(requests_list):
+            requests.append({})
+            requests[i]['request_id'] = x[0]
+            requests[i]['sender_email'] = x[1]
+            requests[i]['helpdesk_email'] = x[2]
+            requests[i]['request_type'] = x[3]
+            requests[i]['request_desc'] = x[4]
+            requests[i]['request_status'] = x[5]
+        connection.commit()
+            
+    except Exception as e:
+        print(e)
+    finally:
+        if connection:
+            connection.close()
+
+    return render_template('claim_requests.html', requests=requests)
 
 @app.route('/payment_methods', methods=['GET', 'POST'])
 def payment_methods():
