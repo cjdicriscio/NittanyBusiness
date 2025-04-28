@@ -74,6 +74,13 @@
                     </select>
                 </div>
                 <div class="col-md-4">
+                    <select class="form-select" name="sort">
+                        <option value="">Sort By</option>
+                        <option value="low_to_high" {% if sort_by == 'low_to_high' %}selected{% endif %}>Price: Low to High</option>
+                        <option value="high_to_low" {% if sort_by == 'high_to_low' %}selected{% endif %}>Price: High to Low</option>
+                    </select>
+                </div>                               
+                <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
                 </div>
             </form>
@@ -85,22 +92,24 @@
                 <div class="card product-card">
                     <div class="card-body">
                         <h5 class="card-title">{{ product.name }}</h5>
-                        <p class="product-price">{{ product.price }}</p>
+                        <p class="product-price">
+                            ${{ "%.2f"|format(product.product_price|string|replace(",", "")|replace("$", "")|float) }}
+                          </p>                          
                         <p class="card-text product-description">{{ product.description }}</p>
                         <p class="stock">In Stock: {{ product.quantity }}</p>
                         <p class="soldby">Sold By: {{ product.seller_name }}</p>
                         <p class="tag">Tag: {{product.category }}</p>
                         <div class="d-grid gap-2">
                             {% if product.quantity > 0 %}
-                            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}" class="d-flex flex-column align-items-center">
-                                <input type="number" name="quantity" class="form-control mb-2" value="1" min="1" max="{{ product.quantity }}" style="width: 80px;">
-                                <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
-                            </form>
-                            <a href="{{ url_for('product_info', product_id=product.id) }}" class="btn btn-outline-primary">View Info</a>
+                                <form method="POST" action="{{ url_for('add_to_cart', product_id=product.listing_id) }}" class="d-flex flex-column align-items-center">
+                                    <input type="number" name="quantity" class="form-control mb-2" value="1" min="1" max="{{ product.quantity }}" style="width: 80px;">
+                                    <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
+                                </form>
+                                <a href="{{ url_for('product_info', product_id=product.listing_id) }}" class="btn btn-outline-primary">View Info</a>
                             {% else %}
-                            <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
+                                <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
                             {% endif %}
-                        </div>
+                        </div>                        
                     </div>
                 </div>
             </div>

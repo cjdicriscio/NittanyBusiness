@@ -36,10 +36,25 @@
                         </option>
                         {% endfor %}
                     </select>
-                    <label for="price" class="form-label">Price (x.xx$ per 1 unit)</label>
-                    <input type="text" class="form-control" id="price" pattern="^\d+(\.\d{1,2})?$" name="price" required>
-                    <label for="quantity" class="form-label">Quantity (quantity must be above 0)</label>
-                    <input type="text" class="form-control" id="quantity" pattern="^(?!0$)\d+$" name="quantity" required>
+                    <label for="price" class="form-label">Price (per unit, e.g., 10.00)</label>
+                    <input type="text" 
+                        class="form-control" 
+                        id="price" 
+                        name="price" 
+                        pattern="^\d+(\.\d{1,2})?$" 
+                        placeholder="Enter price without $ or commas"
+                        title="Enter a valid price, e.g., 10.00"
+                        required>
+
+                    <label for="quantity" class="form-label mt-3">Quantity (must be greater than 0)</label>
+                    <input type="number" 
+                        class="form-control" 
+                        id="quantity" 
+                        name="quantity" 
+                        min="1"
+                        placeholder="Enter quantity"
+                        required>
+
 
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="active" id="published" value="active" checked>

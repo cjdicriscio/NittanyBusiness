@@ -81,6 +81,17 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col">
+                <div class="card dashboard-card">
+                    <div class="card-body text-center">
+                        <div class="dashboard-icon">⭐</div>
+                        <h5 class="card-title">View Reviews</h5>
+                        <p class="card-text">See feedback left by buyers for your products.</p>
+                        <a href="{{ url_for('seller_reviews') }}" class="btn btn-primary">View Reviews</a>
+                    </div>
+                </div>
+            </div>
             {% endif %}
             
             <!-- HelpDesk-specific Dashboard Cards -->
@@ -95,7 +106,19 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col">
+                <div class="card dashboard-card">
+                    <div class="card-body text-center">
+                        <div class="dashboard-icon">✅</div>
+                        <h5 class="card-title">Manage HelpDesk Accounts</h5>
+                        <p class="card-text">Approve or manage pending HelpDesk staff applications.</p>
+                        <a href="{{ url_for('manage_helpdesk_accounts') }}" class="btn btn-primary">Manage Accounts</a>
+                    </div>
+                </div>
+            </div>
             {% endif %}
+
             
             <!-- Additional Cards Based on User Type -->
             {% if user.type == 'Buyer' %}

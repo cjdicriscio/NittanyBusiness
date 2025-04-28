@@ -19,12 +19,21 @@
                     <div class="card-body">
                         <h5 class="card-title">Order ID: {{ order.order_id }}</h5>
                         <p class="product_name">Product: {{ order.product_title }}, {{ order.product_name }}</p>
-                        <p class="product-price">Total Cost: ${{ order.payment }}</p>
+                        <p class="product-price">Total Cost: ${{ "%.2f"|format(order.payment) }}</p>
                         <p class="card-text order-description">Quantity: {{ order.quantity }}</p>
                         <p class="soldby">Sold By: {{ order.seller_name }}</p>
                         <p class="boughtby">Bought By: {{ order.buyer_name }}</p>
                         <p class="tag">Date: {{ order.date }}</p>
-                        <div class="d-grid gap-2">
+
+                        <div class="d-grid gap-2 mt-3">
+                            {% if order.has_review %}
+                                <div class="alert alert-success">
+                                    <strong>Rating:</strong> {{ order.rating }} ⭐<br>
+                                    <strong>Review:</strong> {{ order.review_desc }}
+                                </div>
+                            {% else %}
+                                <a href="{{ url_for('leave_review', order_id=order.order_id) }}" class="btn btn-warning">Leave a Review</a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

@@ -31,11 +31,13 @@ def create_helpdesk_table():
         CREATE TABLE IF NOT EXISTS Helpdesk (
             email TEXT PRIMARY KEY,
             position TEXT NOT NULL,
+            approved INTEGER DEFAULT 1,  -- NEW: default 1 for already existing dataset members
             FOREIGN KEY (email) REFERENCES Users (email) ON UPDATE CASCADE
         );
     ''')
     connection.commit()
     connection.close()
+
 
 # Create the Requests Table
 def create_requests_table():
@@ -260,11 +262,15 @@ def populate_helpdesk():
 
             if email and position:  # Ensure values exist
                 try:
-                    cursor.execute('INSERT INTO Helpdesk (email, position) VALUES (?, ?);', (email, position))
+                    cursor.execute('''
+                        INSERT INTO Helpdesk (email, position, approved)
+                        VALUES (?, ?, 1);  -- NEW: set approved = 1 for initial data
+                    ''', (email, position))
                 except sql.IntegrityError:
                     pass  # Skip duplicates
     connection.commit()
     connection.close()
+
 
 # Populate the Requests Table
 def populate_requests():

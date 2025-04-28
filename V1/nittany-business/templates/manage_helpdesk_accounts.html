@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage HelpDesk Accounts - NittanyBusiness</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container mt-5">
+        <h2 class="mb-4">Pending HelpDesk Applications</h2>
+
+        {% if pending_helpdesks %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Position</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for helpdesk in pending_helpdesks %}
+                <tr>
+                    <td>{{ helpdesk.email }}</td>
+                    <td>{{ helpdesk.position }}</td>
+                    <td>
+                        <form action="{{ url_for('approve_helpdesk', email=helpdesk.email) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-success btn-sm">✅ Approve</button>
+                        </form>
+                        <form action="{{ url_for('reject_helpdesk', email=helpdesk.email) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm">❌ Reject</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div class="alert alert-info">No pending HelpDesk account requests.</div>
+        {% endif %}
+    </div>
+</body>
+</html>

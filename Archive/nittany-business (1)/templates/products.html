@@ -75,7 +75,9 @@
                     <img src="{{ url_for('static', filename='images/placeholder.jpg') }}" class="card-img-top" alt="{{ product.product_name }}" height="200">
                     <div class="card-body">
                         <h5 class="card-title">{{ product.product_name }}</h5>
-                        <p class="product-price">${{ "%.2f"|format(product.price) }}</p>
+                        <p class="product-price">
+                            ${{ "%.2f"|format(product.product_price|string|replace(",", "")|replace("$", "")|float) }}
+                          </p>                          
                         <p class="card-text product-description">{{ product.description }}</p>
                         
                         <div class="d-grid gap-2">

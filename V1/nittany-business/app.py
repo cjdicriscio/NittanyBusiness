@@ -27,6 +27,7 @@ def hash_password(password):
 def index():
     return redirect(url_for('login'))
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     message, success = None, False
@@ -43,7 +44,6 @@ def login():
         # Handle login logic here
         email = request.form.get('email')
         password = request.form.get('password')
-        
         
         #demo credentials if no Database, remove in full ver.
         if email == 'demo@example.com' and password == 'password':
@@ -69,10 +69,16 @@ def login():
                 isBuyer = buyerResult is not None
                 connection.commit()
                 
-                # checks sellers table to see if user is a buyer
-                cursor.execute('SELECT Business_name FROM Sellers WHERE email = ?;', (email,))
+                # checks sellers table to see if user is a seller
+                cursor.execute('SELECT business_name FROM Sellers WHERE email = ?;', (email,))
                 sellerResult = cursor.fetchone()
                 isSeller = sellerResult is not None
+                connection.commit()
+                
+                # checks helpdesk table to see if user is help desk and approved
+                cursor.execute('SELECT position, approved FROM Helpdesk WHERE email = ?;', (email,))
+                helpdeskResult = cursor.fetchone()
+                isHelpDesk = helpdeskResult is not None and helpdeskResult[1] == 1  # approved == 1
                 connection.commit()
                 
                 if isBuyer:
@@ -81,19 +87,20 @@ def login():
                 elif isSeller:
                     userName = sellerResult[0]
                     userType = 'Seller'
-                else:
-                    userName = email
+                elif isHelpDesk:
+                    userName = email  # or helpdeskResult[0] for position if you want
                     userType = 'Help Desk'
+                else:
+                    user = None  # prevent logging in if not any of the 3
                 
-                #update session to include logged in user
-                session['user'] = {'id': email, 'name': userName, 'type': userType}
-                
+                if user:
+                    session['user'] = {'id': email, 'name': userName, 'type': userType}
+
         except Exception as e:
             print(e)
         finally:
             if connection:
                 connection.close() 
-        
 
         if user:
             return redirect(url_for('dashboard'))
@@ -102,29 +109,100 @@ def login():
     
     return render_template('login.html', message=message, success=success)
 
+
+
+# Manage pending HelpDesk accounts
+@app.route('/manage_helpdesk_accounts')
+def manage_helpdesk_accounts():
+    if 'user' not in session:
+        flash('You must be logged in to access this page.', 'error')
+        return redirect(url_for('login'))
+
+    if session['user']['type'] != 'Help Desk':
+        flash('Only HelpDesk staff can access this page.', 'error')
+        return redirect(url_for('dashboard'))
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    cursor.execute('SELECT email, position FROM Helpdesk WHERE approved = 0')
+    pending_helpdesks = cursor.fetchall()
+    connection.close()
+
+    pending_helpdesks = [{'email': row[0], 'position': row[1]} for row in pending_helpdesks]
+
+    return render_template('manage_helpdesk_accounts.html', pending_helpdesks=pending_helpdesks)
+
+
+# Approve a HelpDesk user
+@app.route('/approve_helpdesk/<email>', methods=['POST'])
+def approve_helpdesk(email):
+    if 'user' not in session or session['user']['type'] != 'Help Desk':
+        flash('You are not authorized.', 'error')
+        return redirect(url_for('login'))
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+    cursor.execute('UPDATE Helpdesk SET approved = 1 WHERE email = ?', (email,))
+    connection.commit()
+    connection.close()
+
+    flash('HelpDesk account approved successfully!', 'success')
+    return redirect(url_for('manage_helpdesk_accounts'))
+
+
+# Reject (delete) a HelpDesk request
+@app.route('/reject_helpdesk/<email>', methods=['POST'])
+def reject_helpdesk(email):
+    if 'user' not in session or session['user']['type'] != 'Help Desk':
+        flash('You are not authorized.', 'error')
+        return redirect(url_for('login'))
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+    cursor.execute('DELETE FROM Helpdesk WHERE email = ?', (email,))
+    cursor.execute('DELETE FROM Users WHERE email = ?', (email,))
+    connection.commit()
+    connection.close()
+
+    flash('HelpDesk account rejected and removed.', 'success')
+    return redirect(url_for('manage_helpdesk_accounts'))
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    message = None
+    success = None
+
     if request.method == 'POST':
-        # Handle registration logic here
-        #email = request.form.get('email')
-        #password = request.form.get('password')
-        #confirm_password = request.form.get('confirm_password')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
         user_type = request.form.get('user_type')
+        name = request.form.get('name')
+
+        # NEW: Check if passwords match
+        if password != confirm_password:
+            message = "Passwords do not match. Please try again."
+            success = False
+            return render_template('register.html', message=message, success=success)
+
         session['userRegistration'] = {
-            'email': request.form.get('email'),
-            'password': request.form.get('password'),
-            'name': request.form.get('name'),
+            'email': email,
+            'password': password,
+            'name': name,
         }
 
-        # redirect to second registration page based on user type
+        # Redirect based on user type
         if user_type == 'buyer':
             return redirect(url_for('registerBuyer'))
         elif user_type == 'seller':
             return redirect(url_for('registerSeller'))
         elif user_type == 'helpdesk':
             return redirect(url_for('registerHelpDesk'))
-        
-    return render_template('register.html')
+
+    return render_template('register.html', message=message, success=success)
+
 
 @app.route('/registerBuyer', methods=['GET', 'POST'])
 def registerBuyer():
@@ -187,44 +265,48 @@ def registerBuyer():
 @app.route('/registerHelpDesk', methods=['GET', 'POST'])
 def registerHelpDesk():
     message, success = "", False
-    
+
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
         email = userRegistration.get('email')
         password = userRegistration.get('password')
         password = hash_password(password)
         position = request.form.get('position')
-        
-        # Add validation and database operations
+
         try:
-            # Add the helpdesk to database
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
-            cursor = cursor.execute('''
-                INSERT INTO Users(email,password)
-                VALUES(?,?)
+
+            # Insert into Users
+            cursor.execute('''
+                INSERT INTO Users(email, password)
+                VALUES (?, ?)
             ''', (email, password))
             connection.commit()
-            cursor = cursor.execute('''
-                INSERT INTO Helpdesk(email,position)
-                VALUES(?,?)
+
+            # Insert into Helpdesk with approved = 0
+            cursor.execute('''
+                INSERT INTO Helpdesk (email, position, approved)
+                VALUES (?, ?, 0)
             ''', (email, position))
             connection.commit()
-            connection.close()
-            
-            message = f'Help Desk account created successfully!'
+
+            message = f'HelpDesk account created successfully! Please wait for approval.'
             success = True
             flash((message, success))
-            
+
             return redirect(url_for('login'))
+
         except Exception as e:
             message = f'Failed to create account: {e}'
             success = False
+
         finally:
             if connection:
                 connection.close()
 
     return render_template('registerHelpDesk.html', message=message, success=success)
+
 
 
 @app.route('/registerSeller', methods=['GET', 'POST'])
@@ -295,12 +377,12 @@ def products():
     cursor = connection.cursor()
 
     selected_category = request.args.get('category')
-    search_query = request.args.get('search') # instance to search
-
+    search_query = request.args.get('search')
+    sort_order = request.args.get('sort')  # <-- capture selected sort order
 
     # Recursively find all products under the current category
-    if (selected_category):
-        cursor.execute(f'''
+    if selected_category:
+        cursor.execute('''
         WITH RECURSIVE subcategories(category_name) AS (
             SELECT category_name
             FROM Categories
@@ -314,59 +396,61 @@ def products():
         )
         SELECT * FROM ProductListings
         WHERE category IN (SELECT category_name FROM subcategories)
-        AND Status !=2
-        AND Status !=0
         ''', (selected_category,))
-
-    # Initially display all products before filtering
     else:
-        cursor.execute('''SELECT * FROM ProductListings''')
+        cursor.execute('SELECT * FROM ProductListings')
 
-    # Preprocess the products into a better format for HTML
-    attributes = ['sellerEmail', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
+    attributes = ['seller_email', 'listing_id', 'category', 'product_title', 'product_name', 'product_description',
+                  'quantity', 'product_price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
-    # Search query
+    # Preprocess: clean product prices and seller names
+    for product in products:
+        # Clean the price properly
+        raw_price = str(product['product_price']).replace('$', '').replace(',', '').strip()
+        try:
+            product['product_price'] = float(raw_price)
+        except ValueError:
+            product['product_price'] = 0.0  # fallback if something weird
+
+        # Find Seller names
+        cursor.execute('SELECT business_name FROM Sellers WHERE email = ?', (product['seller_email'],))
+        seller = cursor.fetchone()
+        product['seller_name'] = seller[0] if seller else 'Unknown Seller'
+
+    # Apply search
     if search_query:
         products = [
             product for product in products
-            if search_query.lower() in product['name'].lower() or search_query.lower() in product['description'].lower()
+            if search_query.lower() in product['product_name'].lower() or search_query.lower() in product[
+                'product_description'].lower()
         ]
 
+    # Apply sort
+    if sort_order == 'asc':
+        products = sorted(products, key=lambda x: x['product_price'])
+    elif sort_order == 'desc':
+        products = sorted(products, key=lambda x: x['product_price'], reverse=True)
 
-    # Find Seller names for display 
-    for product in products:
+    # Load categories
+    if selected_category:
         cursor.execute('''
-            SELECT (business_name)
-            FROM Sellers S
-            WHERE S.email = ?
-        ''', (product['sellerEmail'],))
-        product['seller_name'] = cursor.fetchone()[0]
-
-    # Find subcategories one level below current category
-    if (selected_category):
-        cursor.execute('''
-            SELECT (category_name) 
+            SELECT category_name
             FROM Categories
-            WHERE parent_category=?
-                       
+            WHERE parent_category = ?
+
             UNION
-                       
-            SELECT (category_name)
+
+            SELECT category_name
             FROM Categories
-            WHERE category_name=?         
-            ''', (selected_category,selected_category))
-    
-    # Default Categories
+            WHERE category_name = ?
+        ''', (selected_category, selected_category))
     else:
-        cursor.execute('''SELECT (category_name) 
-            FROM Categories 
-            WHERE parent_category = ?''', ("Root",))
-    
-    # Preprocessing into a string
+        cursor.execute('SELECT category_name FROM Categories WHERE parent_category = ?', ('Root',))
+
     categories = [row[0] for row in cursor.fetchall()]
 
-    # Mock pagination
+    # Fake pagination (placeholder, later real one)
     class Pagination:
         def __init__(self):
             self.page = 1
@@ -376,18 +460,22 @@ def products():
             self.has_next = False
             self.prev_num = None
             self.next_num = None
-        
+
         def iter_pages(self):
             return [1]
-    
+
     pagination = Pagination()
 
-    return render_template('products.html', 
-                          products=products,
-                          categories=categories,
-                          pagination=pagination,
-                          selected_category = selected_category
-                          )
+    connection.close()
+
+    return render_template('products.html',
+                           products=products,
+                           categories=categories,
+                           pagination=pagination,
+                           selected_category=selected_category,
+                           selected_sort=sort_order  # <- keep track of sort choice
+                           )
+
 
 #Cart section
 @app.route('/cart')
@@ -633,17 +721,14 @@ def createProductListing():
     message = ""
     success = None
     user = session.get('user', {})
-        
-    sellerEmail = user.get('email')
-    listingID = 0 # changed later
-    productTitle = request.form.get('productTitle')
-    productName = request.form.get('productName')
-    description = request.form.get('description')
-    category = request.form.get('category')
-    price = request.form.get('price')
-    quantity = request.form.get('quantity')
-    status = request.form.get('active')
-    status = 1 if status == 'active' else 0
+
+    if 'user' not in session:
+        flash('You must be logged in to create a product listing.', 'error')
+        return redirect(url_for('login'))
+
+    if user['type'] != 'Seller':
+        flash('Only sellers can create product listings.', 'error')
+        return redirect(url_for('dashboard'))
 
     if request.method == "GET":
         try:
@@ -654,42 +739,71 @@ def createProductListing():
             connection.close()
         except Exception as e:
             print(e)
-        
+
     if request.method == "POST":
         try:
-            seller = session['user']
-            
-            sellerEmail = seller['id']
-            
+            sellerEmail = user['id']
+            productTitle = request.form.get('productTitle')
+            productName = request.form.get('productName')
+            description = request.form.get('description')
+            category = request.form.get('category')
+            price_input = request.form.get('price')
+            quantity_input = request.form.get('quantity')
+            status_input = request.form.get('active')
+
+            # ✅ Clean price properly
+            cleaned_price = price_input.replace('$', '').replace(',', '').strip()
+            price = float(cleaned_price)
+
+            # ✅ Validate quantity
+            quantity = int(quantity_input)
+            if quantity <= 0:
+                raise ValueError("Quantity must be greater than 0.")
+
+            # ✅ Set status
+            status = 1 if status_input == 'active' else 0
+
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
-            
+
+            # ✅ Find last Listing_ID and increment
             cursor.execute('SELECT MAX(Listing_ID) FROM ProductListings WHERE Seller_Email = ?', (sellerEmail,))
             lastID = cursor.fetchone()[0]
             if lastID:
-                listingID = lastID + 1 # make id one more than previous product
+                listingID = lastID + 1
             else:
-                listingID = 1 # create initial id for object
-            
+                listingID = 1
+
+            # ✅ Insert the new product
             cursor.execute('''
-                INSERT INTO ProductListings(Seller_Email, Listing_ID, Category, Product_Title, Product_Name, Product_Description, Quantity, Product_Price, Status)
-                VALUES(?,?,?,?,?,?,?,?,?)
-            ''', (sellerEmail, listingID, category, productTitle, productName, description, quantity, price, status))
+                INSERT INTO ProductListings(
+                    Seller_Email, Listing_ID, Category, Product_Title, 
+                    Product_Name, Product_Description, Quantity, Product_Price, Status
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (sellerEmail, listingID, category, productTitle,
+                  productName, description, quantity, price, status))
+
             connection.commit()
-            
-            message = f'{productTitle} Listed'
+            message = f'{productTitle} listed successfully!'
             success = True
             flash((message, success))
-            
             return redirect(url_for('productListings'))
+
+        except ValueError as ve:
+            message = f'Invalid input: {ve}'
+            success = False
+            flash((message, success))
         except Exception as e:
             message = f'Failed to list product: {e}'
             success = False
+            flash((message, success))
         finally:
-            if connection:
+            if 'connection' in locals():
                 connection.close()
-                
+
     return render_template('createProductListing.html', message=message, success=success, categories=categories)
+
 
 
 @app.route('/editProductListing', methods=['GET', 'POST'])
@@ -834,12 +948,16 @@ def dashboard():
 @app.route('/logout')
 def logout():
     session.pop('user', None)
+    session.pop('cart', None)  # optional: also clear cart if needed
+    session.clear()  # ✅ clear all session data including flashed messages
     return redirect(url_for('login'))
+
 
 # Placeholder routes for dashboard links
 @app.route('/orders')
 def orders():
     user = session.get('user', {})
+
     class Pagination:
         def __init__(self):
             self.page = 1
@@ -857,6 +975,7 @@ def orders():
     print(user)
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
+    
     cursor.execute('''
         SELECT *
         FROM Orders O
@@ -864,43 +983,129 @@ def orders():
         ORDER BY date DESC
     ''', (user['id'],))
 
-    
     attributes = ['order_id', 'seller_email', 'buyer_email', 'listing_id', 'date', 'quantity', 'payment']
     orders = [dict(zip(attributes, row)) for row in cursor.fetchall()]
     
-     
     for order in orders:
         # Find Seller names for display
         cursor.execute('''
-            SELECT (business_name)
-            FROM Sellers S
-            WHERE S.email = ?
+            SELECT business_name
+            FROM Sellers
+            WHERE email = ?
         ''', (order['seller_email'],))
-        order['seller_name'] = cursor.fetchone()[0]
+        seller = cursor.fetchone()
+        order['seller_name'] = seller[0] if seller else 'Unknown Seller'
 
-        # Find buyer names for display
+        # Find Buyer names for display
         cursor.execute('''
-            SELECT (business_name)
-            FROM Buyers B
-            WHERE B.email = ?
+            SELECT business_name
+            FROM Buyers
+            WHERE email = ?
         ''', (order['buyer_email'],))
-        order['buyer_name'] = cursor.fetchone()[0]
+        buyer = cursor.fetchone()
+        order['buyer_name'] = buyer[0] if buyer else 'Unknown Buyer'
 
-        # Find product in the order
+        # Find Product Info
         cursor.execute('''
             SELECT product_title, product_name
-            FROM ProductListings P
-            WHERE P.listing_id = ?
+            FROM ProductListings
+            WHERE listing_id = ?
         ''', (order['listing_id'],))
-        temp = cursor.fetchone()
-        order['product_title'] = temp[0]
-        order['product_name'] = temp[1]
+        product = cursor.fetchone()
+        if product:
+            order['product_title'] = product[0]
+            order['product_name'] = product[1]
+        else:
+            order['product_title'] = 'Unknown Title'
+            order['product_name'] = 'Unknown Product'
+
+        # 🆕 Check if this order has a Review
+        cursor.execute('''
+            SELECT review_desc, rating
+            FROM Reviews
+            WHERE order_id = ?
+        ''', (order['order_id'],))
+        review = cursor.fetchone()
+        if review:
+            order['has_review'] = True
+            order['review_desc'] = review[0]
+            order['rating'] = review[1]
+        else:
+            order['has_review'] = False
+
+    connection.close()
 
     return render_template('orders.html', 
                            user=user,
                            pagination=pagination,
                            orders=orders
                            )
+
+@app.route('/leave_review/<int:order_id>', methods=['GET', 'POST'])
+def leave_review(order_id):
+    if 'user' not in session:
+        flash('You must be logged in to leave a review.', 'error')
+        return redirect(url_for('login'))
+
+    user = session['user']
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    # First, check if the order actually exists and belongs to this user
+    cursor.execute('''
+        SELECT buyer_email
+        FROM Orders
+        WHERE order_id = ?
+    ''', (order_id,))
+    order = cursor.fetchone()
+
+    if not order:
+        flash('Order not found.', 'error')
+        connection.close()
+        return redirect(url_for('orders'))
+
+    if order[0] != user['id']:
+        flash('You can only review your own orders.', 'error')
+        connection.close()
+        return redirect(url_for('orders'))
+
+    if request.method == 'POST':
+        review_desc = request.form.get('review_desc', '')
+        rating = request.form.get('rating')
+
+        if not rating:
+            flash('Rating is required.', 'error')
+            connection.close()
+            return redirect(url_for('leave_review', order_id=order_id))
+
+        try:
+            rating = int(rating)
+            if rating < 1 or rating > 5:
+                raise ValueError
+        except ValueError:
+            flash('Rating must be an integer between 1 and 5.', 'error')
+            connection.close()
+            return redirect(url_for('leave_review', order_id=order_id))
+
+        # Insert into Reviews table
+        try:
+            cursor.execute('''
+                INSERT INTO Reviews (order_id, review_desc, rating)
+                VALUES (?, ?, ?)
+            ''', (order_id, review_desc, rating))
+            connection.commit()
+            flash('Review submitted successfully!', 'success')
+        except Exception as e:
+            flash(f'Failed to submit review: {e}', 'error')
+        finally:
+            connection.close()
+
+        return redirect(url_for('orders'))
+
+    connection.close()
+    return render_template('leave_review.html', order_id=order_id)
+
 
 @app.route('/thank_you')
 def thank_you():
@@ -921,7 +1126,7 @@ def update_request(request_id):
         flash('You must be logged in to access your profile.', 'error')
         return redirect(url_for('login'))
     
-    elif session['user']['type'] != 'Help Desk':
+    if session['user']['type'] != 'Help Desk':
         flash('You must be Help Desk to access this page.', 'error')
         return redirect(url_for('dashboard'))
     
@@ -934,40 +1139,82 @@ def update_request(request_id):
         try:
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
+
+            # Handle category creation if provided
             if new_category and parent_category:
-                cursor.execute("""
-                    INSERT INTO Categories(category_name,parent_category)
-                    VALUES(?,?)
-                """, (new_category, parent_category))
+                cursor.execute('''
+                    INSERT INTO Categories (category_name, parent_category)
+                    VALUES (?, ?)
+                ''', (new_category, parent_category))
                 connection.commit()
 
+            # Handle email change if provided
             if new_sender_email:
-                cursor.execute('SELECT * FROM Requests WHERE request_id = ?;', (request_id,))
-                req = cursor.fetchone()
-                sender_email = req[1]
-                cursor.execute("""
-                    UPDATE Users
-                    SET email = ?
-                    WHERE email = ?
-                """, (new_sender_email, sender_email))
-                connection.commit()
+                # Get old email from the request
+                cursor.execute('SELECT sender_email FROM Requests WHERE request_id = ?', (request_id,))
+                old_email = cursor.fetchone()
+                
+                if old_email:
+                    old_email = old_email[0]
+                    
+                    # 1. Update Users table
+                    cursor.execute('''
+                        UPDATE Users
+                        SET email = ?
+                        WHERE email = ?
+                    ''', (new_sender_email, old_email))
+                    
+                    # 2. Figure out what type the old email was
+                    cursor.execute('SELECT * FROM Buyers WHERE email = ?', (old_email,))
+                    buyer = cursor.fetchone()
+                    
+                    cursor.execute('SELECT * FROM Sellers WHERE email = ?', (old_email,))
+                    seller = cursor.fetchone()
+                    
+                    cursor.execute('SELECT * FROM Helpdesk WHERE email = ?', (old_email,))
+                    helpdesk = cursor.fetchone()
 
+                    # 3. Update the corresponding table
+                    if buyer:
+                        cursor.execute('''
+                            UPDATE Buyers
+                            SET email = ?
+                            WHERE email = ?
+                        ''', (new_sender_email, old_email))
+                    elif seller:
+                        cursor.execute('''
+                            UPDATE Sellers
+                            SET email = ?
+                            WHERE email = ?
+                        ''', (new_sender_email, old_email))
+                    elif helpdesk:
+                        cursor.execute('''
+                            UPDATE Helpdesk
+                            SET email = ?
+                            WHERE email = ?
+                        ''', (new_sender_email, old_email))
+
+                    connection.commit()
+
+            # Handle request status update (approve/deny)
             if new_request_status is not None:
-                cursor.execute("""
+                cursor.execute('''
                     UPDATE Requests
                     SET request_status = ?
                     WHERE request_id = ?
-                """, (int(new_request_status), request_id))
+                ''', (int(new_request_status), request_id))
                 connection.commit()
             
         except Exception as e:
-            print(e)
+            print("Error in update_request:", e)
         finally:
             if connection:
-                connection.close() 
+                connection.close()
+        flash('Request updated successfully!', 'success')
         return redirect(url_for('manage_requests'))
 
     return render_template('update_request.html', request_id=request_id)
+
 
 @app.route('/manage_requests')
 def manage_requests():
@@ -1034,12 +1281,17 @@ def payment_methods():
             except Exception as e:
                 flash(f'Failed to add credit card: {e}', 'danger')
 
+        # ✅ Always redirect after POST (even if success or error)
+        connection.close()
+        return redirect(url_for('payment_methods'))
+
     # Fetch buyer's saved cards
     cursor.execute('SELECT credit_card_num, card_type, expire_month, expire_year FROM CreditCards WHERE owner_email = ?', (user['id'],))
     cards = cursor.fetchall()
     connection.close()
 
     return render_template('payment_methods.html', cards=cards)
+
 
 @app.route('/delete_card/<card_num>', methods=['POST'])
 def delete_card(card_num):
@@ -1095,6 +1347,37 @@ def product_info(product_id):
     return render_template('product_info.html',
                            product=product,
                            reviews=reviews)
+
+@app.route('/seller_reviews')
+def seller_reviews():
+    if 'user' not in session:
+        flash('You must be logged in.', 'error')
+        return redirect(url_for('login'))
+
+    user = session['user']
+    if user['type'] != 'Seller':
+        flash('Only sellers can view their reviews.', 'error')
+        return redirect(url_for('dashboard'))
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    # Get all orders that belong to this seller
+    cursor.execute('''
+        SELECT O.order_id, O.listing_id, O.date, O.quantity, O.payment, R.review_desc, R.rating
+        FROM Orders O
+        LEFT JOIN Reviews R ON O.order_id = R.order_id
+        WHERE O.seller_email = ?
+        ORDER BY O.date DESC
+    ''', (user['id'],))
+
+    attributes = ['order_id', 'listing_id', 'date', 'quantity', 'payment', 'review_desc', 'rating']
+    reviews = [dict(zip(attributes, row)) for row in cursor.fetchall()]
+
+    connection.close()
+
+    return render_template('seller_reviews.html', user=user, reviews=reviews)
+
 
 @app.route('/sales_analytics')
 def sales_analytics():
