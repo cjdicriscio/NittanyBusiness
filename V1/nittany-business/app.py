@@ -883,8 +883,8 @@ def editProductListing():
             connection.commit()
             
             message = f'{productTitle} Updated!'
-            success = True
-            flash((message, success))
+            success = 'success'
+            flash(message, success)
             
             return redirect(url_for('productListings'))
         except Exception as e:

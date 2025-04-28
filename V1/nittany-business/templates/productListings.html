@@ -45,10 +45,12 @@
                 <div class="card product-card">
                     <div class="card-body">
                         <h5 class="card-title">{{ product.name }}</h5>
+                        
                         <p class="product-price">
                             ${{ "%.2f"|format(product.product_price|string|replace(",", "")|replace("$", "")|float) }}
                           </p>                          
-                        <p class="card-text product-description">{{ product.description }}</p>
+                        <p class="card-text product-description">Description: {{ product.description }}</p>
+                        <p class="card-title">Product Title: {{ product.title }}</p>
                         <p class="tag">Quantity: {{ product.quantity }}</p>
                         <p class="tag">Tag: {{product.category }}</p>
                         <p class="tag">Status: {{ "active" if product.status == 1 else "inactive" }}</p>
