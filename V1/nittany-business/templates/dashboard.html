@@ -15,7 +15,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <<ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link active" href="{{ url_for('dashboard') }}">Dashboard</a>
                     </li>
@@ -86,17 +86,6 @@
             
             <!-- Buyer-specific Dashboard Cards -->
             {% if user.type == 'Buyer' %}
-            <div class="col">
-                <div class="card dashboard-card">
-                    <div class="card-body text-center">
-                        <div class="dashboard-icon">❤️</div>
-                        <h5 class="card-title">View Wishlist</h5>
-                        <p class="card-text">Manage your saved items and wishlist products.</p>
-                        <a href="{{ url_for('wishlist') }}" class="btn btn-primary">Go to Wishlist</a>
-                    </div>
-                </div>
-            </div>
-
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
