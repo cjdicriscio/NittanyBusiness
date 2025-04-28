@@ -20,15 +20,24 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('products') }}">Products</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
-                        </li>
-                        <li class="Profile">
-                            <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
-                        </li>
+                        {% if user.type == 'Buyer'%}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('products') }}">Products</a>
+                            </li>
+                        {% endif %}
+                        {% if user.type == 'Buyer' or user.type == 'Seller' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
+                            </li>
+                        {% endif %}
+                        {% if user.type == 'Help Desk'%}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('manage_requests') }}">Tickets</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('manage_helpdesk_accounts') }}">HelpDesk Accounts</a>
+                            </li>
+                        {% endif %}
                     </ul>
                 </ul>
                 <div class="d-flex align-items-center">
@@ -118,42 +127,6 @@
             No products found matching your criteria.
         </div>
         {% endif %}
-        
-        <nav aria-label="Page navigation" class="mt-4">
-            <ul class="pagination justify-content-center">
-                {% if pagination.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('products', page=pagination.prev_num) }}">Previous</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">Previous</span>
-                </li>
-                {% endif %}
-                
-                {% for page in pagination.iter_pages() %}
-                {% if page %}
-                <li class="page-item {% if page == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('products', page=page) }}">{{ page }}</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">...</span>
-                </li>
-                {% endif %}
-                {% endfor %}
-                
-                {% if pagination.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('products', page=pagination.next_num) }}">Next</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">Next</span>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
     </div>
 </body>
 </html>
