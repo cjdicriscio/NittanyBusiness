@@ -483,10 +483,11 @@ def cart():
     # Get cart from session
     cart = session.get('cart', [])
     
+    # Creates a subtotal for each type of item
     for item in cart:
         item['subtotal'] = float(item['price'].replace('$', '')) * float(item['quantity'])
 
-    # ✅ Remove "$" and safely convert to float
+    # final price of all items
     total_price = sum(float(item['price'].replace('$', '')) * int(item['quantity']) for item in cart)
 
     return render_template('cart.html', user=user, cart=cart, total_price=total_price)
@@ -546,7 +547,6 @@ def checkout(total_price):
     return render_template('checkout.html', 
                            cards=cards,
                            total_price=total_price)
-
 
 
 @app.route('/finalize_sale', methods=['POST'])
@@ -618,7 +618,7 @@ def finalize_sale():
         if connection:
             connection.close()
 
-
+# displays sellers listings for editing, creating, deleting
 @app.route('/productListings', methods=['GET', 'POST'])
 def productListings():
     connection = sql.connect(DATABASE)
@@ -632,7 +632,7 @@ def productListings():
     if flashed:
         success, message = flashed[0]
 
-    # Recursively find all products under the current category
+    # Recursively find all products under the selected category
     if selected_category:
         cursor.execute(f'''
         WITH RECURSIVE subcategories(category_name) AS (
@@ -651,7 +651,7 @@ def productListings():
         AND Seller_Email = ?
         AND Status !=2
         ''', (selected_category, sellerEmail))
-    else:
+    else: # select every listing
         cursor.execute('''
         SELECT * FROM ProductListings
         WHERE Seller_Email = ?
@@ -671,20 +671,18 @@ def productListings():
         ''', (product['seller_email'],))
         product['seller_name'] = cursor.fetchone()[0]
 
+    # find children and current category
     if (selected_category):
         cursor.execute('''
-            SELECT (category_name) 
-            FROM Categories
-            WHERE parent_category=?
-                       
-            UNION
-                       
             SELECT (category_name)
             FROM Categories
-            WHERE category_name=?         
+            WHERE parent_category=?
+            UNION   
+            SELECT (category_name)
+            FROM Categories
+            WHERE category_name=?    
             ''', (selected_category,selected_category))
-    
-    else:
+    else: # pick all categories
         cursor.execute('''SELECT (category_name) 
             FROM Categories 
             WHERE parent_category = ?''', ("Root",))
@@ -699,6 +697,7 @@ def productListings():
                           success=success
                           )
 
+# seller creates new product listing
 @app.route('/createProductListing', methods=['GET', 'POST'])
 def createProductListing():
     categories = []
@@ -706,6 +705,7 @@ def createProductListing():
     success = None
     user = session.get('user', {})
 
+    # got to the wrong link and was not logged in
     if 'user' not in session:
         flash('You must be logged in to create a product listing.', 'error')
         return redirect(url_for('login'))
@@ -718,7 +718,7 @@ def createProductListing():
         try:
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
-            cursor.execute('''SELECT category_name FROM Categories;''')
+            cursor.execute('''SELECT category_name FROM Categories;''') # select all categories for the dropdown
             categories = [row[0] for row in cursor.fetchall()]
             connection.close()
         except Exception as e:
@@ -735,22 +735,22 @@ def createProductListing():
             quantity_input = request.form.get('quantity')
             status_input = request.form.get('active')
 
-            # ✅ Clean price properly
+            # clean price
             cleaned_price = price_input.replace('$', '').replace(',', '').strip()
             price = float(cleaned_price)
 
-            # ✅ Validate quantity
+            # set quantity and check
             quantity = int(quantity_input)
             if quantity <= 0:
                 raise ValueError("Quantity must be greater than 0.")
 
-            # ✅ Set status
+            # set status
             status = 1 if status_input == 'active' else 0
 
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
 
-            # ✅ Find last Listing_ID and increment
+            # Find last Listing_ID and increment
             cursor.execute('SELECT MAX(Listing_ID) FROM ProductListings WHERE Seller_Email = ?', (sellerEmail,))
             lastID = cursor.fetchone()[0]
             if lastID:
@@ -758,7 +758,7 @@ def createProductListing():
             else:
                 listingID = 1
 
-            # ✅ Insert the new product
+            # Insert new product
             cursor.execute('''
                 INSERT INTO ProductListings(
                     Seller_Email, Listing_ID, Category, Product_Title, 
@@ -788,8 +788,7 @@ def createProductListing():
 
     return render_template('createProductListing.html', message=message, success=success, categories=categories)
 
-
-
+# edit product listing after it has been created
 @app.route('/editProductListing', methods=['GET', 'POST'])
 def editProductListing():
     categories = []
@@ -801,6 +800,7 @@ def editProductListing():
     
     productData = {}
     
+    # reupdate the productID since it is a new product
     listingID = session.get('productID')
     if not listingID:
         listingID = request.args.get('productID')
@@ -817,6 +817,7 @@ def editProductListing():
             cursor.execute('''SELECT * FROM ProductListings WHERE Listing_ID = ? AND Seller_Email = ?''', (listingID, sellerEmail))
             product = cursor.fetchone()
             
+            # to display the current editable product in the html
             if product:
                 productData = {
                                 'productTitle': product[3],
@@ -852,6 +853,7 @@ def editProductListing():
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             
+            # change this listing based on the updated fields of the form
             cursor.execute('''
                 UPDATE ProductListings
                 SET Category=?, Product_Title=?, Product_Name=?, Product_Description=?, Quantity=?, Product_Price=?, Status=?
@@ -874,6 +876,7 @@ def editProductListing():
     
     return render_template('editProductListing.html', message=message, success=success, categories=categories, productData=productData)
 
+# seller removes a product listing from the market
 @app.route('/deleteProductListing', methods=['GET', 'POST'])
 def deleteProductListing():
     if request.method == "GET":
@@ -890,7 +893,7 @@ def deleteProductListing():
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             
-            print(listingID)
+            # essentially delete the listing by making its status "sold"
             cursor.execute('''
                 UPDATE ProductListings
                 SET Status=2
@@ -914,7 +917,7 @@ def deleteProductListing():
     
     return render_template('deleteProductListing.html')
     
-
+# homepage for all users
 @app.route('/dashboard')
 def dashboard():
     message, success = None, False
@@ -995,7 +998,7 @@ def orders():
             order['product_title'] = 'Unknown Title'
             order['product_name'] = 'Unknown Product'
 
-        # 🆕 Check if this order has a Review
+        # Check if this order has a Review
         cursor.execute('''
             SELECT review_desc, rating
             FROM Reviews
@@ -1134,14 +1137,14 @@ def update_request(request_id):
                 if old_email:
                     old_email = old_email[0]
                     
-                    # 1. Update Users table
+                    # First update Users table
                     cursor.execute('''
                         UPDATE Users
                         SET email = ?
                         WHERE email = ?
                     ''', (new_sender_email, old_email))
                     
-                    # 2. Figure out what type the old email was
+                    # Second figure out what type the old email was
                     cursor.execute('SELECT * FROM Buyers WHERE email = ?', (old_email,))
                     buyer = cursor.fetchone()
                     
@@ -1151,7 +1154,7 @@ def update_request(request_id):
                     cursor.execute('SELECT * FROM Helpdesk WHERE email = ?', (old_email,))
                     helpdesk = cursor.fetchone()
 
-                    # 3. Update the corresponding table
+                    # Third update the table
                     if buyer:
                         cursor.execute('''
                             UPDATE Buyers
