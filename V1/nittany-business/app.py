@@ -634,6 +634,8 @@ def productListings():
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
+    user = session['user']
+
     selected_category = request.args.get('category')
     sellerEmail = session['user']['id']
     
@@ -704,7 +706,8 @@ def productListings():
                           categories=categories,
                           selected_category = selected_category,
                           message=message,
-                          success=success
+                          success=success,
+                          user=user
                           )
 
 # seller creates new product listing
@@ -796,7 +799,7 @@ def createProductListing():
             if 'connection' in locals():
                 connection.close()
 
-    return render_template('createProductListing.html', message=message, success=success, categories=categories)
+    return render_template('createProductListing.html', message=message, success=success, categories=categories,user=user)
 
 # edit product listing after it has been created
 @app.route('/editProductListing', methods=['GET', 'POST'])
@@ -884,7 +887,7 @@ def editProductListing():
             if connection:
                 connection.close()
     
-    return render_template('editProductListing.html', message=message, success=success, categories=categories, productData=productData)
+    return render_template('editProductListing.html', message=message, success=success, categories=categories, productData=productData, user=user)
 
 # seller removes a product listing from the market
 @app.route('/deleteProductListing', methods=['GET', 'POST'])
@@ -1060,7 +1063,7 @@ def leave_review(order_id):
         WHERE order_id = ?
     ''', (order_id,))
     order = cursor.fetchone()
-
+    
     if not order:
         flash('Order not found.', 'error')
         connection.close()
@@ -1087,7 +1090,7 @@ def leave_review(order_id):
         except ValueError:
             flash('Rating must be an integer between 1 and 5.', 'error')
             connection.close()
-            return redirect(url_for('leave_review', order_id=order_id))
+            return redirect(url_for('leave_review', order_id=order_id, user=user))
 
         # Insert into Reviews table
         try:
@@ -1105,7 +1108,7 @@ def leave_review(order_id):
         return redirect(url_for('orders'))
 
     connection.close()
-    return render_template('leave_review.html', order_id=order_id)
+    return render_template('leave_review.html', order_id=order_id, user=user)
 
 
 @app.route('/thank_you')
@@ -1113,15 +1116,6 @@ def thank_you():
     user = session['user']
     return render_template('thank_you.html',
                            user=user)
-
-
-@app.route('/wishlist')
-def wishlist():
-    return "Wishlist Page"
-
-@app.route('/manage_listings')
-def manage_listings():
-    return "Manage Listings Page"
 
 @app.route('/update_request/<int:request_id>', methods=['GET', 'POST'])
 def update_request(request_id):
@@ -1301,6 +1295,8 @@ def claim_requests():
         flash('You must be Help Desk to access this page.', 'error')
         return redirect(url_for('dashboard'))
     
+    user = session['user']
+
     if request.method == 'POST':
         request_id = request.form.get('request_id')
         try:
@@ -1341,7 +1337,7 @@ def claim_requests():
         if connection:
             connection.close()
 
-    return render_template('claim_requests.html', requests=requests)
+    return render_template('claim_requests.html', requests=requests, user=user)
 
 @app.route('/payment_methods', methods=['GET', 'POST'])
 def payment_methods():
@@ -1441,7 +1437,8 @@ def product_info(product_id):
 
     return render_template('product_info.html',
                            product=product,
-                           reviews=reviews)
+                           reviews=reviews,
+                           user=user)
 
 @app.route('/seller_reviews')
 def seller_reviews():
@@ -1472,15 +1469,6 @@ def seller_reviews():
     connection.close()
 
     return render_template('seller_reviews.html', user=user, reviews=reviews)
-
-
-@app.route('/sales_analytics')
-def sales_analytics():
-    return "Sales Analytics Page"
-
-@app.route('/knowledge_base')
-def knowledge_base():
-    return "Knowledge Base Page"
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -1569,7 +1557,7 @@ def submit_request():
             if connection:
                 connection.close()
 
-    return render_template('submit_request.html')
+    return render_template('submit_request.html', user=user)
 
 @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
@@ -1621,11 +1609,6 @@ def add_to_cart(product_id):
     flash('Product added to cart!', 'success')
 
     return redirect(url_for('products'))
-
-@app.route('/buy_now/<int:product_id>')
-def buy_now(product_id):
-    # Buy now logic here
-    return "Buy Now Page"
 
 if __name__ == '__main__':
     app.run(debug=True)

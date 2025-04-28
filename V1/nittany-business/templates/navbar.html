@@ -14,10 +14,15 @@
                         <a class="nav-link" href="{{ url_for('products') }}">Products</a>
                     </li>
                 {% endif %}
-                {% if user.type == 'Buyer' or user.type == 'Seller' %}
+                {% if user.type == 'Buyer' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
                     </li>
+                {% endif %}
+                {% if user.type == 'Seller'%}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('seller_reviews') }}">Orders/Reviews</a>
+                </li>
                 {% endif %}
                 {% if user.type == 'Help Desk'%}
                     <li class="nav-item">

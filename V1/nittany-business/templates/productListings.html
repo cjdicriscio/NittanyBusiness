@@ -45,9 +45,8 @@
                 <div class="card product-card">
                     <div class="card-body">
                         <h5 class="card-title">{{ product.name }}</h5>
-                        
                         <p class="product-price">
-                            ${{ "%.2f"|format(product.product_price|string|replace(",", "")|replace("$", "")|float) }}
+                            ${{ "%.2f"|format(product.price|string|replace(",", "")|replace("$", "")|float) }}
                           </p>                          
                         <p class="card-text product-description">Description: {{ product.description }}</p>
                         <p class="card-title">Product Title: {{ product.title }}</p>
