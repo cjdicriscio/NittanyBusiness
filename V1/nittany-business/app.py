@@ -1168,6 +1168,11 @@ def update_request(request_id):
                         SET email = ?
                         WHERE email = ?
                     ''', (new_sender_email, old_email))
+                    cursor.execute('''
+                        UPDATE Requests
+                        SET sender_email = ?
+                        WHERE sender_email = ?
+                    ''', (new_sender_email, old_email))
                     
                     # Second figure out what type the old email was
                     cursor.execute('SELECT * FROM Buyers WHERE email = ?', (old_email,))
@@ -1186,20 +1191,46 @@ def update_request(request_id):
                             SET email = ?
                             WHERE email = ?
                         ''', (new_sender_email, old_email))
+                        connection.commit()
+                        cursor.execute('''
+                            UPDATE CreditCards
+                            SET owner_email = ?
+                            WHERE owner_email = ?
+                        ''', (new_sender_email, old_email))
+                        connection.commit()
+                        cursor.execute('''
+                            UPDATE Orders
+                            SET buyer_email = ?
+                            WHERE buyer_email = ?
+                        ''', (new_sender_email, old_email))
+                        connection.commit()
+                        
                     elif seller:
                         cursor.execute('''
                             UPDATE Sellers
                             SET email = ?
                             WHERE email = ?
                         ''', (new_sender_email, old_email))
+                        connection.commit()
+                        cursor.execute('''
+                            UPDATE Orders
+                            SET seller_email = ?
+                            WHERE seller_email = ?
+                        ''', (new_sender_email, old_email))
+                        cursor.execute('''
+                            UPDATE ProductListings
+                            SET seller_email = ?
+                            WHERE seller_email = ?
+                        ''', (new_sender_email, old_email))
+                        connection.commit()
+                        
                     elif helpdesk:
                         cursor.execute('''
                             UPDATE Helpdesk
                             SET email = ?
                             WHERE email = ?
                         ''', (new_sender_email, old_email))
-
-                    connection.commit()
+                        connection.commit()
 
             # Handle request status update (approve/deny)
             if new_request_status is not None:
