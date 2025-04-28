@@ -9,6 +9,11 @@
 </head>
 <body>
     {% include 'navbar.html' %}
+    {% if message %}
+            <div class="message-box {% if success %}success-message{% else %}error-message{% endif %}">
+                {{ message }}
+            </div>
+    {% endif %}
     <div class="container mt-4">
         <h2 class="mb-4">Your Product Listings</h2>
 

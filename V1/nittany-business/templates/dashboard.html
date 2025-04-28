@@ -9,6 +9,11 @@
 </head>
 <body>
     {% include 'navbar.html' %}
+    {% if message %}
+            <div class="message-box {% if success %}success-message{% else %}error-message{% endif %}">
+                {{ message }}
+            </div>
+    {% endif %}
     <div class="container mt-4">
         <div class="user-welcome">
             <div class="d-flex justify-content-between align-items-center">

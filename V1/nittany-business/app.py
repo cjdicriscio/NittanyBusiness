@@ -633,6 +633,11 @@ def productListings():
 
     selected_category = request.args.get('category')
     sellerEmail = session['user']['id']
+    
+    message, success = None, False
+    flashed = get_flashed_messages(with_categories=True)
+    if flashed:
+        success, message = flashed[0]
 
     # Recursively find all products under the current category
     if selected_category:
@@ -712,7 +717,9 @@ def productListings():
                           products=products,
                           categories=categories,
                           pagination=pagination,
-                          selected_category = selected_category
+                          selected_category = selected_category,
+                          message=message,
+                          success=success
                           )
 
 @app.route('/createProductListing', methods=['GET', 'POST'])
@@ -786,18 +793,18 @@ def createProductListing():
 
             connection.commit()
             message = f'{productTitle} listed successfully!'
-            success = True
-            flash((message, success))
+            success = 'success'
+            flash(message, success)
             return redirect(url_for('productListings'))
 
         except ValueError as ve:
             message = f'Invalid input: {ve}'
-            success = False
-            flash((message, success))
+            success = 'error'
+            flash(message, success)
         except Exception as e:
             message = f'Failed to list product: {e}'
-            success = False
-            flash((message, success))
+            success = 'error'
+            flash(message, success)
         finally:
             if 'connection' in locals():
                 connection.close()
@@ -915,14 +922,15 @@ def deleteProductListing():
             connection.commit()
             
             message = f'Deleted!'
-            success = True
-            flash((message, success))
+            success = 'success'
+            flash(message, success)
             
             return redirect(url_for('productListings'))
         except Exception as e:
             print(e)
             message = f'Failed to delete product: {e}'
-            success = False
+            success = 'error'
+            flash(message, success)
         finally:
             if connection:
                 connection.close()
@@ -932,6 +940,12 @@ def deleteProductListing():
 
 @app.route('/dashboard')
 def dashboard():
+    message, success = None, False
+
+    flashed = get_flashed_messages(with_categories=True)
+    if flashed:
+        success, message = flashed[0]
+            
     # Check if user is logged in
     if 'user' not in session:
         return redirect(url_for('login'))
@@ -943,7 +957,7 @@ def dashboard():
     else:
         user['last_login'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    return render_template('dashboard.html', user=user)
+    return render_template('dashboard.html', user=user, message=message, success=success)
 
 @app.route('/logout')
 def logout():
@@ -1393,6 +1407,13 @@ def profile():
         flash('You must be logged in to access your profile.', 'error')
         return redirect(url_for('login'))
     user = session['user']
+    
+    flashed = get_flashed_messages(with_categories=True)
+    if flashed:
+        category, message = flashed[0]
+        success = (category == 'success')
+    else:
+        message, success = None, False
 
     if request.method == 'POST':
         
@@ -1422,9 +1443,11 @@ def profile():
                     WHERE email = ?
                 """, (new_hashed_password, email))
                 connection.commit()
-                #flash('Password updated successfully!', 'success')
+                flash('Password updated successfully!', 'success')
+                return redirect(url_for('dashboard'))
             else:
                 flash('Invalid passcode.', 'error')
+                success = False
                 return redirect(url_for('profile'))
             
         except Exception as e:
@@ -1433,7 +1456,7 @@ def profile():
             if connection:
                 connection.close() 
         
-    return render_template('profile.html', user=user)
+    return render_template('profile.html', user=user, message=message, success=success)
 
 @app.route('/submit_request', methods=['GET', 'POST'])
 def submit_request():
