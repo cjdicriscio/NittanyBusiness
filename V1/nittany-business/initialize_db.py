@@ -506,7 +506,7 @@ def populate_reviews():
         reader = csv.DictReader(file)
         for row in reader:
             order_id = row.get('Order_ID', '').strip()
-            review_desc = row.get('Review_Desc', '').strip()
+            review_desc = row.get(' Review_Desc', '').strip()
             rating = row.get('Rate', '').strip()
 
             if order_id and review_desc and rating:  # Ensure values exist

@@ -76,6 +76,7 @@
                         <h5 class="card-title">{{ product.name }}</h5>
                         <p class="product-price">{{ product.price }}</p>
                         <p class="card-text product-description">{{ product.description }}</p>
+                        <p class="stock">In Stock: {{ product.quantity }}</p>
                         <p class="soldby">Sold By: {{ product.seller_name }}</p>
                         <p class="tag">Tag: {{product.category }}</p>
                         <div class="d-grid gap-2">
@@ -85,7 +86,7 @@
                                 <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
                             </form>
                             
-                            <a href="{{ url_for('buy_now', product_id=product.id) }}" class="btn btn-outline-primary">Buy Now</a>
+                            <a href="{{ url_for('product_info', product_id=product.id) }}" class="btn btn-outline-primary">View Info</a>
                             {% else %}
                             <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
                             {% endif %}

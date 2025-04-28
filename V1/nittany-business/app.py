@@ -190,7 +190,6 @@ def registerHelpDesk():
     
     if request.method == 'POST':
         userRegistration = session.get('userRegistration', {})
-        #print(userRegistration)
         email = userRegistration.get('email')
         password = userRegistration.get('password')
         password = hash_password(password)
@@ -341,7 +340,6 @@ def products():
             WHERE S.email = ?
         ''', (product['sellerEmail'],))
         product['seller_name'] = cursor.fetchone()[0]
-        print(product['seller_name'])
 
     # Find subcategories one level below current category
     if (selected_category):
@@ -849,11 +847,8 @@ def orders():
             WHERE P.listing_id = ?
         ''', (order['listing_id'],))
         temp = cursor.fetchone()
-        print(temp, "hey")
         order['product_title'] = temp[0]
         order['product_name'] = temp[1]
-        print(order)
-        print(order['product_name'])
 
     return render_template('orders.html', 
                            user=user,
@@ -1014,7 +1009,46 @@ def delete_card(card_num):
     flash('Credit card removed.', 'success')
     return redirect(url_for('payment_methods'))
 
+@app.route('/product_info/<int:product_id>')
+def product_info(product_id):
+    user = session['user']
 
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+    cursor.execute('''
+        SELECT *
+        FROM ProductListings
+        WHERE listing_id = ?
+        ''', (product_id,))
+    product_row = cursor.fetchone()
+
+    if not product_row:
+        flash('Product not found.', 'danger')
+        return redirect(url_for('products'))
+
+    product_attributes = ['seller_email', 'listing_id', 'category', 'product_title', 'product_name', 'product_description', 'quantity', 'product_price', 'status']
+    product = dict(zip(product_attributes, product_row))
+
+    cursor.execute('''
+            SELECT (business_name)
+            FROM Sellers S
+            WHERE S.email = ?
+        ''', (product['seller_email'],))
+    product['seller_name'] = cursor.fetchone()[0]
+
+    cursor.execute('''
+            SELECT review_desc, rating
+            FROM Reviews R
+            JOIN Orders O ON R.order_id = O.order_id
+            WHERE O.listing_id = ?
+        ''', (product['listing_id'],))
+    review_attributes = ['review_desc', 'rating']
+    reviews = [dict(zip(review_attributes, row)) for row in cursor.fetchall()]
+    connection.close()
+
+    return render_template('product_info.html',
+                           product=product,
+                           reviews=reviews)
 
 @app.route('/sales_analytics')
 def sales_analytics():
@@ -1046,31 +1080,25 @@ def profile():
             return redirect(url_for('profile'))
         
         try:
-            #print('good')
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             cursor.execute('SELECT * FROM users WHERE email = ? AND password = ?;', (email, hashed_password))
             user = cursor.fetchone()
             connection.commit()
-            #print('good')
             if user:
                 new_hashed_password = hash_password(new_password)
-                #print('good')
                 cursor.execute("""
                     UPDATE users
                     SET password = ?
                     WHERE email = ?
                 """, (new_hashed_password, email))
                 connection.commit()
-                #print('good')
                 #flash('Password updated successfully!', 'success')
             else:
-                #print('inv')
                 flash('Invalid passcode.', 'error')
                 return redirect(url_for('profile'))
             
         except Exception as e:
-            #print('good')
             print(e)
         finally:
             if connection:
@@ -1095,17 +1123,14 @@ def submit_request():
             flash('All fields are required.', 'error')
             return redirect(url_for('submit_request'))
         try:
-            #print('good')
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             cursor.execute("""INSERT INTO Requests (sender_email, helpdesk_staff_email, request_type, request_desc, request_status)
             VALUES (?, ?, ?, ?, ?)""", (email, helpdesk_email, request_type, description, request_status))
             connection.commit()
-            #print('good')
             flash('Helpdesk request submitted successfully!', 'success')
             
         except Exception as e:
-            #print('good')
             print(e)
         finally:
             if connection:
