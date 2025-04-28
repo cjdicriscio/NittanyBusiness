@@ -29,7 +29,7 @@
                     <label for="description" class="form-label">Description</label>
                     <textarea class="form-control" id="description" name="description" rows="4" required>{{ productData['description'] }}</textarea>
                     <label for="category" class="form-label">Categories</label>
-                    <select class="form-select" name="category" id="category"> <!-- TODO make select of categories complete-->
+                    <select class="form-select" name="category" id="category">
                         <option value="{{ productData['productCategory'] }}"
                         {% for category in categories %}
                         <option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>
@@ -37,19 +37,19 @@
                         </option>
                         {% endfor %}
                     </select>
-                    <label for="price" class="form-label">Price ($ per 1 unit)</label>
-                    <input type="text" class="form-control" id="price" name="price" value="{{ productData['price'] }}"required>
-                    <label for="quantity" class="form-label">Quantity</label>
-                    <input type="text" class="form-control" id="quantity" name="quantity" value="{{ productData['quantity'] }}" required>
+                    <label for="price" class="form-label" >Price ($x.xx per 1 unit)</label>
+                    <input type="text" class="form-control" id="price" name="price" pattern="^\d+(\.\d{1,2})?$" value="{{ productData['price'] }}"required>
+                    <label for="quantity" class="form-label">Quantity (quantity must be above 0)</label>
+                    <input type="text" class="form-control" id="quantity" name="quantity" pattern="^(?!0$)\d+$" value="{{ productData['quantity'] }}" required>
 
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="active" id="published" value="published" checked>
+                        <input class="form-check-input" type="radio" name="active" id="published" value="active" checked>
                         <label class="form-check-label" for="published">
                             Published Listing (visible to buyers)
                         </label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="active" id="unpublished" value="private">
+                        <input class="form-check-input" type="radio" name="active" id="unpublished" value="inactive">
                         <label class="form-check-label" for="unpublished">
                             Unpublished Listing (not visible to buyers)
                         </label>

@@ -537,7 +537,6 @@ def productListings():
             WHERE S.email = ?
         ''', (product['seller_email'],))
         product['seller_name'] = cursor.fetchone()[0]
-        print(product['seller_name'])
 
     # Find subcategories one level below current category
     if (selected_category):
@@ -601,7 +600,8 @@ def createProductListing():
     price = request.form.get('price')
     quantity = request.form.get('quantity')
     status = request.form.get('active')
-    
+    status = 1 if status == 'active' else 0
+
     if request.method == "GET":
         try:
             connection = sql.connect(DATABASE)
@@ -628,7 +628,6 @@ def createProductListing():
             else:
                 listingID = 1 # create initial id for object
             
-            print(status)
             cursor.execute('''
                 INSERT INTO ProductListings(Seller_Email, Listing_ID, Category, Product_Title, Product_Name, Product_Description, Quantity, Product_Price, Status)
                 VALUES(?,?,?,?,?,?,?,?,?)
@@ -643,11 +642,12 @@ def createProductListing():
         except Exception as e:
             message = f'Failed to list product: {e}'
             success = False
-        #finally:
-            #if connection:
-                #connection.close()
+        finally:
+            if connection:
+                connection.close()
                 
     return render_template('createProductListing.html', message=message, success=success, categories=categories)
+
 
 @app.route('/editProductListing', methods=['GET', 'POST'])
 def editProductListing():
@@ -668,6 +668,9 @@ def editProductListing():
 
     if request.method == "GET":
         try:
+            listingID = request.args.get('productID')
+            session['productID'] = listingID
+            
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
             cursor.execute('''SELECT * FROM ProductListings WHERE Listing_ID = ? AND Seller_Email = ?''', (listingID, sellerEmail))
@@ -681,7 +684,7 @@ def editProductListing():
                                 'productCategory': product[2],
                                 'price': product[7],
                                 'quantity': product[6],
-                                'active': product[8]
+                                'status': product[8]
                             }
     
             cursor.execute('''SELECT category_name FROM Categories;''')
@@ -701,8 +704,8 @@ def editProductListing():
         category = request.form.get('category')
         price = request.form.get('price')
         quantity = request.form.get('quantity')
-        
-        print(sellerEmail, listingID, productTitle, productName, description, quantity, price, quantity)
+        status = request.form.get('active')
+        status = 1 if status == 'active' else 0
         
         try:
             connection = sql.connect(DATABASE)
@@ -710,9 +713,9 @@ def editProductListing():
             
             cursor.execute('''
                 UPDATE ProductListings
-                SET Category=?, Product_Title=?, Product_Name=?, Product_Description=?, Quantity=?, Product_Price=?
+                SET Category=?, Product_Title=?, Product_Name=?, Product_Description=?, Quantity=?, Product_Price=?, Status=?
                 WHERE Seller_Email=? AND Listing_ID=?
-            ''', (category, productTitle, productName, description, quantity, price, sellerEmail, listingID))
+            ''', (category, productTitle, productName, description, quantity, price, status, sellerEmail, listingID))
             connection.commit()
             
             message = f'{productTitle} Updated!'
@@ -727,9 +730,47 @@ def editProductListing():
         finally:
             if connection:
                 connection.close()
-                
+    
     return render_template('editProductListing.html', message=message, success=success, categories=categories, productData=productData)
 
+@app.route('/deleteProductListing', methods=['GET', 'POST'])
+def deleteProductListing():
+    if request.method == "GET":
+        listingID = request.args.get('productID')
+        session['productID'] = listingID
+        
+    if request.method == "POST":
+        user = session['user']
+        sellerEmail = user['id']
+
+        listingID = session.get('productID')
+                
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            
+            print(listingID)
+            cursor.execute('''
+                DELETE FROM ProductListings
+                WHERE Seller_Email=? AND Listing_ID=?
+            ''', (sellerEmail, listingID))
+            connection.commit()
+            
+            message = f'Deleted!'
+            success = True
+            flash((message, success))
+            
+            return redirect(url_for('productListings'))
+        except Exception as e:
+            print(e)
+            message = f'Failed to delete product: {e}'
+            success = False
+        finally:
+            if connection:
+                connection.close()
+    
+    return render_template('deleteProductListing.html')
+    
 
 @app.route('/dashboard')
 def dashboard():
