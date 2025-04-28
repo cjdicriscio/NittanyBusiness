@@ -33,34 +33,41 @@
 
     <div class="container mt-4">
         <h2 class="mb-4">Products</h2>
-        
+    
         <div class="filters">
             <form method="GET" action="{{ url_for('products') }}" class="row g-3">
                 <div class="col-md-4">
                     <select class="form-select" name="category">
                         <option value="">All Categories</option>
                         {% for category in categories %}
-                        <option value="{{ category.category_id }}" {% if selected_category == category.category_id %}selected{% endif %}>
-                            {{ category.category_name }}
+                        <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>
+                            {{ category }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
+    
                 <div class="col-md-4">
-                    <select class="form-select" name="sort">
-                        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option>
-                        <option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
-                        <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                    <select class="form-select" name="price_range" onchange="this.form.submit()">
+                        <option value="">Filter by Price Range</option>
+                        <option value="0-50" {% if selected_price_range == '0-50' %}selected{% endif %}>$0 - $50</option>
+                        <option value="50-200" {% if selected_price_range == '50-200' %}selected{% endif %}>$50 - $200</option>
+                        <option value="200-1000" {% if selected_price_range == '200-1000' %}selected{% endif %}>$200 - $1000</option>
+                        <option value="1000+" {% if selected_price_range == '1000+' %}selected{% endif %}>$1000+</option>
                     </select>
                 </div>
+    
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
                 </div>
-                {% if search %}
-                <input type="hidden" name="search" value="{{ search }}">
+    
+                {% if search_query %}
+                    <input type="hidden" name="search" value="{{ search_query }}">
                 {% endif %}
             </form>
         </div>
+    </div>
+    
         
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for product in products %}

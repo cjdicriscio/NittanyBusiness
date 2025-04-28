@@ -377,95 +377,102 @@ def registerSeller():
 
 @app.route('/products')
 def products():
+    user = session.get('user', {})  # Always get user first
+
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
-    user = session['user']
-
     selected_category = request.args.get('category')
     search_query = request.args.get('search')
-    sort_order = request.args.get('sort')  # <-- capture selected sort order
+    price_range = request.args.get('price_range')  # <-- NEW
 
-
-    # Recursively find all products under the current category
-    if selected_category:
-        cursor.execute('''
-        WITH RECURSIVE subcategories(category_name) AS (
-            SELECT category_name
-            FROM Categories
-            WHERE category_name = ?
-
-            UNION ALL
-
-            SELECT c.category_name
-            FROM Categories c
-            INNER JOIN subcategories s ON c.parent_category = s.category_name
-        )
+    # Start building SQL query
+    base_query = '''
         SELECT * FROM ProductListings
-        WHERE category IN (SELECT category_name FROM subcategories)
-        ''', (selected_category,))
-    else:
-        cursor.execute('SELECT * FROM ProductListings')
+    '''
+    where_clauses = []
+    params = []
 
-    attributes = ['seller_email', 'listing_id', 'category', 'product_title', 'product_name', 'product_description',
-                  'quantity', 'product_price', 'status']
+    # Category filter
+    if selected_category:
+        where_clauses.append('category IN (SELECT category_name FROM Categories WHERE category_name = ? OR parent_category = ?)')
+        params.extend([selected_category, selected_category])
+
+    # Build full query
+    if where_clauses:
+        base_query += ' WHERE ' + ' AND '.join(where_clauses)
+
+    cursor.execute(base_query, params)
+
+    attributes = ['seller_email', 'listing_id', 'category', 'product_title', 'product_name', 'product_description', 'quantity', 'product_price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
-    # Preprocess: clean product prices and seller names
-    for product in products:
-        # Clean the price properly
-        raw_price = str(product['product_price']).replace('$', '').replace(',', '').strip()
-        try:
-            product['product_price'] = float(raw_price)
-        except ValueError:
-            product['product_price'] = 0.0  # fallback if something weird
+    # Search filter (in memory after fetching)
+    if search_query:
+        products = [
+            product for product in products
+            if search_query.lower() in product['product_name'].lower() or search_query.lower() in product['product_description'].lower()
+        ]
 
-        # Find Seller names
+    # Price range filter (also in memory after fetching)
+    if price_range:
+        if '-' in price_range:
+            min_price, max_price = price_range.split('-')
+            min_price = float(min_price)
+            max_price = float(max_price)
+            products = [
+                p for p in products
+                if min_price <= float(str(p['product_price']).replace('$', '').replace(',', '').strip()) <= max_price
+            ]
+        elif price_range == '1000+':
+            products = [
+                p for p in products
+                if float(str(p['product_price']).replace('$', '').replace(',', '').strip()) >= 1000
+            ]
+
+    # Fetch Seller Names
+    for product in products:
         cursor.execute('SELECT business_name FROM Sellers WHERE email = ?', (product['seller_email'],))
         seller = cursor.fetchone()
         product['seller_name'] = seller[0] if seller else 'Unknown Seller'
 
-    # Apply search
-    if search_query:
-        products = [
-            product for product in products
-            if search_query.lower() in product['product_name'].lower() or search_query.lower() in product[
-                'product_description'].lower()
-        ]
-
-    # Apply sort
-    if sort_order == 'asc':
-        products = sorted(products, key=lambda x: x['product_price'])
-    elif sort_order == 'desc':
-        products = sorted(products, key=lambda x: x['product_price'], reverse=True)
-
-    # Load categories
+    # Fetch Categories
     if selected_category:
         cursor.execute('''
-            SELECT category_name
-            FROM Categories
-            WHERE parent_category = ?
-
-            UNION
-
-            SELECT category_name
-            FROM Categories
-            WHERE category_name = ?
+            SELECT category_name FROM Categories
+            WHERE parent_category = ? OR category_name = ?
         ''', (selected_category, selected_category))
     else:
         cursor.execute('SELECT category_name FROM Categories WHERE parent_category = ?', ('Root',))
-
     categories = [row[0] for row in cursor.fetchall()]
+
+    # Dummy Pagination
+    class Pagination:
+        def __init__(self):
+            self.page = 1
+            self.per_page = 10
+            self.total = 3
+            self.has_prev = False
+            self.has_next = False
+            self.prev_num = None
+            self.next_num = None
+        
+        def iter_pages(self):
+            return [1]
+    
+    pagination = Pagination()
+
     connection.close()
 
     return render_template('products.html',
-                           products=products,
-                           categories=categories,
-                           selected_category=selected_category,
-                           selected_sort=sort_order,  # <- keep track of sort choice
-                           user=user
-                           )
-
+        user=user,
+        products=products,
+        categories=categories,
+        pagination=pagination,
+        selected_category=selected_category,
+        selected_price_range=price_range,  # <-- Pass this
+        search_query=search_query           # <-- Pass this
+    )
 
 #Cart section
 @app.route('/cart')
