@@ -80,7 +80,10 @@
             <h4 class="text-end">Total: <strong>${{ total_price }}</strong></h4>
 
             <div class="text-end mt-4">
-                <a href="#" class="btn btn-success">Proceed to Checkout</a>
+                <form action="{{ url_for('checkout') }}" method="POST" class="text-end mt-4">
+                    <button type="submit" class="btn btn-success">Proceed to Checkout</button>
+                </form>
+                
             </div>
         {% else %}
             <div class="alert alert-info">

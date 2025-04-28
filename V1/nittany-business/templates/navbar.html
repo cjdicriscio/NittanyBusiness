@@ -1,0 +1,37 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="#">NittanyBusiness</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('products') }}">Products</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center">
+                <form class="d-flex me-3" method="GET" action="{{ url_for('products') }}">
+                    <input class="form-control me-2" type="search" placeholder="Search products" name="search">
+                    <button class="btn btn-light" type="submit">Search</button>
+                </form>
+
+                <!-- Cart Button -->
+                <a href="{{ url_for('cart') }}" class="btn btn-light position-relative me-2">
+                    🛒
+                    {% if session.get('cart') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ session['cart'] | length }}
+                        </span>
+                    {% endif %}
+                </a>
+
+                <!-- Logout Button -->
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Logout</a>
+            </div>
+        </div>
+    </div>
+</nav>

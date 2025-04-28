@@ -427,7 +427,70 @@ def remove_from_cart(listing_id):
     return redirect(url_for('cart'))
 
 
+@app.route('/checkout', methods=['POST'])
+def checkout():
+    if 'user' not in session:
+        flash('You must be logged in to checkout.', 'error')
+        return redirect(url_for('login'))
 
+    user = session['user']
+
+    if user['type'] != 'Buyer':
+        flash('Only buyers can checkout.', 'error')
+        return redirect(url_for('dashboard'))
+
+    cart = session.get('cart', [])
+
+    if not cart:
+        flash('Your cart is empty.', 'error')
+        return redirect(url_for('cart'))
+
+    try:
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+
+        for item in cart:
+            listing_id = item['listing_id']
+            quantity = item['quantity']
+            price = float(item['price'].replace('$', '')) if isinstance(item['price'], str) else float(item['price'])
+            payment = price * int(quantity)
+            date_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            # Get seller email safely
+            cursor.execute('SELECT seller_email FROM ProductListings WHERE listing_id = ?', (listing_id,))
+            result = cursor.fetchone()
+            if not result:
+                continue  # skip if somehow product not found
+            seller_email = result[0]
+
+            # Insert the order
+            cursor.execute('''
+                INSERT INTO Orders (seller_email, buyer_email, listing_id, date, quantity, payment)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (seller_email, user['id'], listing_id, date_now, quantity, payment))
+
+            # Decrease product quantity
+            cursor.execute('''
+                UPDATE ProductListings
+                SET quantity = quantity - ?
+                WHERE listing_id = ?
+            ''', (quantity, listing_id))
+
+        connection.commit()
+
+        # Clear cart after successful checkout
+        session['cart'] = []
+        flash('Checkout successful! Your orders have been placed.', 'success')
+        return redirect(url_for('thank_you'))
+
+    except Exception as e:
+        print(f"Checkout Error: {e}")
+        flash('An error occurred during checkout. Please try again.', 'error')
+        return redirect(url_for('cart'))
+
+    finally:
+        if connection:
+            connection.close()
 
 
 @app.route('/productListings', methods=['GET', 'POST'])
@@ -609,8 +672,10 @@ def orders():
     cursor.execute('''
         SELECT *
         FROM Orders O
-        WHERE buyer_email = ?     
-        ''',(user['id'],))
+        WHERE buyer_email = ?
+        ORDER BY date DESC
+    ''', (user['id'],))
+
     
     attributes = ['order_id', 'seller_email', 'buyer_email', 'listing_id', 'date', 'quantity', 'payment']
     orders = [dict(zip(attributes, row)) for row in cursor.fetchall()]
@@ -651,6 +716,11 @@ def orders():
                            pagination=pagination,
                            orders=orders
                            )
+
+@app.route('/thank_you')
+def thank_you():
+    return render_template('thank_you.html')
+
 
 @app.route('/wishlist')
 def wishlist():
@@ -748,9 +818,59 @@ def manage_requests():
 
     return render_template('manage_requests.html', requests=requests)
 
-@app.route('/payment_methods')
+@app.route('/payment_methods', methods=['GET', 'POST'])
 def payment_methods():
-    return "Payment Methods Page"
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    user = session['user']
+    if user['type'] != 'Buyer':
+        return redirect(url_for('dashboard'))  # Only Buyers manage payments
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+
+    if request.method == 'POST':
+        # Add new credit card
+        credit_card_num = request.form.get('credit_card_num')
+        card_type = request.form.get('card_type')
+        expire_month = request.form.get('expire_month')
+        expire_year = request.form.get('expire_year')
+        security_code = request.form.get('security_code')
+
+        if credit_card_num and card_type and expire_month and expire_year and security_code:
+            try:
+                cursor.execute('''
+                    INSERT INTO CreditCards (credit_card_num, card_type, expire_month, expire_year, security_code, owner_email)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (credit_card_num, card_type, expire_month, expire_year, security_code, user['id']))
+                connection.commit()
+                flash('Credit card added successfully!', 'success')
+            except Exception as e:
+                flash(f'Failed to add credit card: {e}', 'danger')
+
+    # Fetch buyer's saved cards
+    cursor.execute('SELECT credit_card_num, card_type, expire_month, expire_year FROM CreditCards WHERE owner_email = ?', (user['id'],))
+    cards = cursor.fetchall()
+    connection.close()
+
+    return render_template('payment_methods.html', cards=cards)
+
+@app.route('/delete_card/<card_num>', methods=['POST'])
+def delete_card(card_num):
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    connection = sql.connect(DATABASE)
+    cursor = connection.cursor()
+    cursor.execute('DELETE FROM CreditCards WHERE credit_card_num = ? AND owner_email = ?', (card_num, session['user']['id']))
+    connection.commit()
+    connection.close()
+
+    flash('Credit card removed.', 'success')
+    return redirect(url_for('payment_methods'))
+
+
 
 @app.route('/sales_analytics')
 def sales_analytics():
