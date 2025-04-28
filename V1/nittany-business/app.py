@@ -516,6 +516,8 @@ def checkout(total_price):
     if user['type'] != 'Buyer':
         return redirect(url_for('dashboard'))  # Only Buyers manage payments
 
+    user = session['user']
+
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
@@ -545,7 +547,8 @@ def checkout(total_price):
 
     return render_template('checkout.html', 
                            cards=cards,
-                           total_price=total_price)
+                           total_price=total_price,
+                           user=user)
 
 
 
@@ -590,6 +593,13 @@ def finalize_sale():
                 INSERT INTO Orders (seller_email, buyer_email, listing_id, date, quantity, payment)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (seller_email, user['id'], listing_id, date_now, quantity, payment))
+
+            # Add to seller balance
+            cursor.execute('''
+                UPDATE Sellers 
+                SET balance = balance + ?
+                WHERE email = ?
+            ''', (payment, seller_email))
 
             # Decrease product quantity #https://www.interviewquery.com/p/sql-count-case-when
             cursor.execute('''
@@ -1097,7 +1107,9 @@ def leave_review(order_id):
 
 @app.route('/thank_you')
 def thank_you():
-    return render_template('thank_you.html')
+    user = session['user']
+    return render_template('thank_you.html',
+                           user=user)
 
 
 @app.route('/wishlist')
