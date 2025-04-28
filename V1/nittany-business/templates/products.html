@@ -91,7 +91,7 @@
             <div class="col">
                 <div class="card product-card">
                     <div class="card-body">
-                        <h5 class="card-title">{{ product.name }}</h5>
+                        <h5 class="card-title">{{ product.product_name }}</h5>
                         <p class="product-price">
                             ${{ "%.2f"|format(product.product_price|string|replace(",", "")|replace("$", "")|float) }}
                           </p>                          
