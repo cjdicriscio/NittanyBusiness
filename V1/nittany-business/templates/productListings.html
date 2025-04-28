@@ -66,7 +66,7 @@
                         <p class="card-text product-description">{{ product.description }}</p>
                         <p class="tag">Quantity: {{ product.quantity }}</p>
                         <p class="tag">Tag: {{product.category }}</p>
-                        <p class="tag">Status: {{ product.status }}</p>
+                        <p class="tag">Status: {{ "active" if product.status == 1 else "inactive" }}</p>
                         <div class="d-grid gap-2">
                             <div class="d-grid gap-2">
                                 <a href="{{ url_for('editProductListing', productID=product.id) }}" class="btn btn-primary w-100">Edit Product</a>
