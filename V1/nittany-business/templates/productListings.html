@@ -62,19 +62,14 @@
                 <div class="card product-card">
                     <div class="card-body">
                         <h5 class="card-title">{{ product.name }}</h5>
-                        <p class="product-price">{{ product.price }}</p>
+                        <p class="product-price">${{ product.price }}</p>
                         <p class="card-text product-description">{{ product.description }}</p>
-                        <p class="soldby">Sold By: {{ product.sellerEmail }}</p>
                         <p class="tag">Tag: {{product.category }}</p>
+                        <p class="tag">Status: {{ product.status }}</p>
                         <div class="d-grid gap-2">
-                            {% if product.quantity > 0 %}
-                            <form method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}">
-                                <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
-                            </form>
-                            <a href="{{ url_for('buy_now', product_id=product.id) }}" class="btn btn-outline-primary">Buy Now</a>
-                            {% else %}
-                            <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
-                            {% endif %}
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('editProductListing', productID=product.id) }}" class="btn btn-primary w-100">Edit Product</a>
+                            </div>
                         </div>
                     </div>
                 </div>

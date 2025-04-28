@@ -455,37 +455,59 @@ def productListings():
 
 @app.route('/createProductListing', methods=['GET', 'POST'])
 def createProductListing():
+    categories = []
+    message = ""
+    success = None
     user = session.get('user', {})
         
     sellerEmail = user.get('email')
-    listingID = uuid.uuid4().hex
+    listingID = 0 # changed later
     productTitle = request.form.get('productTitle')
     productName = request.form.get('productName')
     description = request.form.get('description')
     category = request.form.get('category')
     price = request.form.get('price')
     quantity = request.form.get('quantity')
+    status = request.form.get('active')
+    
+    if request.method == "GET":
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute('''SELECT category_name FROM Categories;''')
+            categories = [row[0] for row in cursor.fetchall()]
+            connection.close()
+        except Exception as e:
+            print(e)
         
     if request.method == "POST":
         try:
             seller = session['user']
-            sellerEmail = seller.id
             
-            # Add the seller to database
+            sellerEmail = seller['id']
+            
             connection = sql.connect(DATABASE)
             cursor = connection.cursor()
+            
+            cursor.execute('SELECT MAX(Listing_ID) FROM ProductListings WHERE Seller_Email = ?', (sellerEmail,))
+            lastID = cursor.fetchone()[0]
+            if lastID:
+                listingID = lastID + 1 # make id one more than previous product
+            else:
+                listingID = 1 # create initial id for object
+            
+            print(status)
             cursor.execute('''
-                INSERT INTO Product_Listings(Seller_Email, Listing_ID, Category, Product_Title, Product_Name, Product_Description, Quantity, Product_Price, Status)
-                VALUES(?,?)
-            ''', (sellerEmail, listingID, category, productTitle, productName, description, quantity, price, True))
+                INSERT INTO ProductListings(Seller_Email, Listing_ID, Category, Product_Title, Product_Name, Product_Description, Quantity, Product_Price, Status)
+                VALUES(?,?,?,?,?,?,?,?,?)
+            ''', (sellerEmail, listingID, category, productTitle, productName, description, quantity, price, status))
             connection.commit()
-            connection.close()
             
             message = f'{productTitle} Listed'
             success = True
             flash((message, success))
             
-            return redirect(url_for('login'))
+            return redirect(url_for('productListings'))
         except Exception as e:
             message = f'Failed to list product: {e}'
             success = False
@@ -493,7 +515,89 @@ def createProductListing():
             #if connection:
                 #connection.close()
                 
-    return render_template('createProductListing.html')
+    return render_template('createProductListing.html', message=message, success=success, categories=categories)
+
+@app.route('/editProductListing', methods=['GET', 'POST'])
+def editProductListing():
+    categories = []
+    message = ""
+    success = None
+    
+    user = session['user']
+    sellerEmail = user['id']
+    
+    productData = {}
+    
+    listingID = session.get('productID')
+    if not listingID:
+        listingID = request.args.get('productID')
+        if listingID:
+            session['productID'] = listingID
+
+    if request.method == "GET":
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            cursor.execute('''SELECT * FROM ProductListings WHERE Listing_ID = ? AND Seller_Email = ?''', (listingID, sellerEmail))
+            product = cursor.fetchone()
+            
+            if product:
+                productData = {
+                                'productTitle': product[3],
+                                'productName': product[4],
+                                'description': product[5],
+                                'productCategory': product[2],
+                                'price': product[7],
+                                'quantity': product[6],
+                                'active': product[8]
+                            }
+    
+            cursor.execute('''SELECT category_name FROM Categories;''')
+            categories = [row[0] for row in cursor.fetchall()]
+            connection.close()
+            
+        except Exception as e:
+            print(e)
+        finally:
+            if connection:
+                connection.close()
+        
+    if request.method == "POST":
+        productTitle = request.form.get('productTitle')
+        productName = request.form.get('productName')
+        description = request.form.get('description')
+        category = request.form.get('category')
+        price = request.form.get('price')
+        quantity = request.form.get('quantity')
+        
+        print(sellerEmail, listingID, productTitle, productName, description, quantity, price, quantity)
+        
+        try:
+            connection = sql.connect(DATABASE)
+            cursor = connection.cursor()
+            
+            cursor.execute('''
+                UPDATE ProductListings
+                SET Category=?, Product_Title=?, Product_Name=?, Product_Description=?, Quantity=?, Product_Price=?
+                WHERE Seller_Email=? AND Listing_ID=?
+            ''', (category, productTitle, productName, description, quantity, price, sellerEmail, listingID))
+            connection.commit()
+            
+            message = f'{productTitle} Updated!'
+            success = True
+            flash((message, success))
+            
+            return redirect(url_for('productListings'))
+        except Exception as e:
+            print(e)
+            message = f'Failed to update product: {e}'
+            success = False
+        finally:
+            if connection:
+                connection.close()
+                
+    return render_template('editProductListing.html', message=message, success=success, categories=categories, productData=productData)
+
 
 @app.route('/dashboard')
 def dashboard():
