@@ -931,7 +931,20 @@ def dashboard():
     else:
         user['last_login'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    return render_template('dashboard.html', user=user, message=message, success=success)
+    if (user['type'] == 'Seller'):
+        connection = sql.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute('''
+            SELECT (balance)
+            FROM Sellers S
+            WHERE S.email = ?
+            ''', (user['id'],))
+        balance = cursor.fetchone()[0]
+    else:
+        balance = 0
+
+
+    return render_template('dashboard.html', user=user, message=message, success=success, balance=balance)
 
 @app.route('/logout')
 def logout():

@@ -24,6 +24,7 @@
                         <span class="user-type-badge buyer-badge">Buyer Account</span>
                         {% elif user.type == 'Seller' %}
                         <span class="user-type-badge seller-badge">Seller Account</span>
+                        <span class="user-type-badge seller-badge">Balance: ${{ balance }}</span>
                         {% elif user.type == 'Help Desk' %}
                         <span class="user-type-badge helpdesk-badge">HelpDesk Account</span>
                         {% endif %}
