@@ -314,6 +314,8 @@ def products():
         )
         SELECT * FROM ProductListings
         WHERE category IN (SELECT category_name FROM subcategories)
+        AND Status !=2
+        AND Status !=0
         ''', (selected_category,))
 
     # Initially display all products before filtering
@@ -467,12 +469,18 @@ def checkout():
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (seller_email, user['id'], listing_id, date_now, quantity, payment))
 
-            # Decrease product quantity
+            # Decrease product quantity #https://www.interviewquery.com/p/sql-count-case-when
             cursor.execute('''
                 UPDATE ProductListings
-                SET quantity = quantity - ?
+                SET quantity = quantity - ?,
+                    Status = CASE
+                                WHEN quantity - ? <= 0 THEN 2
+                                ELSE Status
+                            END
                 WHERE listing_id = ?
-            ''', (quantity, listing_id))
+            ''', (quantity, quantity, listing_id))
+            
+            
 
         connection.commit()
 
@@ -516,18 +524,20 @@ def productListings():
         SELECT * FROM ProductListings
         WHERE category IN (SELECT category_name FROM subcategories)
         AND Seller_Email = ?
+        AND Status !=2
         ''', (selected_category, sellerEmail))
     else:
         cursor.execute('''
         SELECT * FROM ProductListings
         WHERE Seller_Email = ?
+        AND Status != 2
         ''', (sellerEmail,))
 
     # Preprocess the products into a better format for HTML
     attributes = ['seller_email', 'id', 'category', 'title', 'name', 'description', 'quantity', 'price', 'status']
     products = [dict(zip(attributes, row)) for row in cursor.fetchall()]
 
-    # Find Seller names for display 
+    # seller names to display
     for product in products:
         cursor.execute('''
             SELECT (business_name)
@@ -536,7 +546,6 @@ def productListings():
         ''', (product['seller_email'],))
         product['seller_name'] = cursor.fetchone()[0]
 
-    # Find subcategories one level below current category
     if (selected_category):
         cursor.execute('''
             SELECT (category_name) 
@@ -550,16 +559,13 @@ def productListings():
             WHERE category_name=?         
             ''', (selected_category,selected_category))
     
-    # Default Categories
     else:
         cursor.execute('''SELECT (category_name) 
             FROM Categories 
             WHERE parent_category = ?''', ("Root",))
     
-    # Preprocessing into a string
     categories = [row[0] for row in cursor.fetchall()]
 
-    # Mock pagination
     class Pagination:
         def __init__(self):
             self.page = 1
@@ -749,7 +755,8 @@ def deleteProductListing():
             
             print(listingID)
             cursor.execute('''
-                DELETE FROM ProductListings
+                UPDATE ProductListings
+                SET Status=2
                 WHERE Seller_Email=? AND Listing_ID=?
             ''', (sellerEmail, listingID))
             connection.commit()
