@@ -16,12 +16,23 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('products') }}">Products</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-                    </li>
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{{ url_for('products') }}">Products</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('orders') }}">Orders</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('cart') }}">Your Cart</a>
+                        </li>
+                        <li class="Profile">
+                            <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+                        </li>
+                    </ul>
                 </ul>
                 <div class="d-flex align-items-center">
                     <form class="d-flex me-3" method="GET" action="{{ url_for('products') }}">

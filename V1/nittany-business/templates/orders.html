@@ -17,16 +17,21 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('products') }}">Products</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link active" href="{{ url_for('orders') }}">Orders</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                        <a class="nav-link" href="{{ url_for('cart') }}">Your Cart</a>
+                    </li>
+                    <li class="Profile">
+                        <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
                     </li>
                 </ul>
-                <form class="d-flex" method="GET" action="{{ url_for('orders') }}">
-                    <input class="form-control me-2" type="search" placeholder="Search orders" name="search">
-                    <button class="btn btn-light" type="submit">Search</button>
-                </form>
             </div>
         </div>
     </nav>
