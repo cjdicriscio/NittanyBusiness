@@ -36,7 +36,7 @@
         </div>
         
         <div class="row row-cols-1 row-cols-md-3 g-4">
-            <!-- Common Dashboard Cards for All Users -->
+            {% if user.type == 'Buyer'%}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
@@ -47,7 +47,9 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
+            {% if user.type == 'Buyer' or user.type == 'Seller'%}
             <div class="col">
                 <div class="card dashboard-card">
                     <div class="card-body text-center">
@@ -58,7 +60,8 @@
                     </div>
                 </div>
             </div>
-            
+            {% endif %}
+
             <!-- Buyer-specific Dashboard Cards -->
             {% if user.type == 'Buyer' %}
             <div class="col">

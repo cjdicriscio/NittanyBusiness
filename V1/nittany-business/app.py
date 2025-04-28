@@ -122,6 +122,8 @@ def manage_helpdesk_accounts():
         flash('Only HelpDesk staff can access this page.', 'error')
         return redirect(url_for('dashboard'))
 
+    user = session['user']
+
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
@@ -131,7 +133,9 @@ def manage_helpdesk_accounts():
 
     pending_helpdesks = [{'email': row[0], 'position': row[1]} for row in pending_helpdesks]
 
-    return render_template('manage_helpdesk_accounts.html', pending_helpdesks=pending_helpdesks)
+    return render_template('manage_helpdesk_accounts.html', 
+                           pending_helpdesks=pending_helpdesks,
+                           user=user)
 
 
 # Approve a HelpDesk user
@@ -376,9 +380,12 @@ def products():
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
 
+    user = session['user']
+
     selected_category = request.args.get('category')
     search_query = request.args.get('search')
     sort_order = request.args.get('sort')  # <-- capture selected sort order
+
 
     # Recursively find all products under the current category
     if selected_category:
@@ -449,31 +456,14 @@ def products():
         cursor.execute('SELECT category_name FROM Categories WHERE parent_category = ?', ('Root',))
 
     categories = [row[0] for row in cursor.fetchall()]
-
-    # Fake pagination (placeholder, later real one)
-    class Pagination:
-        def __init__(self):
-            self.page = 1
-            self.per_page = 10
-            self.total = 3
-            self.has_prev = False
-            self.has_next = False
-            self.prev_num = None
-            self.next_num = None
-
-        def iter_pages(self):
-            return [1]
-
-    pagination = Pagination()
-
     connection.close()
 
     return render_template('products.html',
                            products=products,
                            categories=categories,
-                           pagination=pagination,
                            selected_category=selected_category,
-                           selected_sort=sort_order  # <- keep track of sort choice
+                           selected_sort=sort_order,  # <- keep track of sort choice
+                           user=user
                            )
 
 
@@ -701,25 +691,9 @@ def productListings():
     
     categories = [row[0] for row in cursor.fetchall()]
 
-    class Pagination:
-        def __init__(self):
-            self.page = 1
-            self.per_page = 10
-            self.total = 3
-            self.has_prev = False
-            self.has_next = False
-            self.prev_num = None
-            self.next_num = None
-        
-        def iter_pages(self):
-            return [1]
-    
-    pagination = Pagination()
-
     return render_template('productListings.html', 
                           products=products,
                           categories=categories,
-                          pagination=pagination,
                           selected_category = selected_category,
                           message=message,
                           success=success
@@ -975,21 +949,6 @@ def logout():
 def orders():
     user = session.get('user', {})
 
-    class Pagination:
-        def __init__(self):
-            self.page = 1
-            self.per_page = 10
-            self.total = 3
-            self.has_prev = False
-            self.has_next = False
-            self.prev_num = None
-            self.next_num = None
-        
-        def iter_pages(self):
-            return [1]
-    
-    pagination = Pagination()
-    print(user)
     connection = sql.connect(DATABASE)
     cursor = connection.cursor()
     
@@ -1054,7 +1013,6 @@ def orders():
 
     return render_template('orders.html', 
                            user=user,
-                           pagination=pagination,
                            orders=orders
                            )
 
@@ -1147,6 +1105,8 @@ def update_request(request_id):
         flash('You must be Help Desk to access this page.', 'error')
         return redirect(url_for('dashboard'))
     
+    user = session['user']
+
     if request.method == 'POST':
         new_category = request.form.get('new_category')
         parent_category = request.form.get('parent_category')
@@ -1230,8 +1190,9 @@ def update_request(request_id):
         flash('Request updated successfully!', 'success')
         return redirect(url_for('manage_requests'))
 
-    return render_template('update_request.html', request_id=request_id)
-
+    return render_template('update_request.html', 
+                           request_id=request_id,
+                           user=user)
 
 @app.route('/manage_requests')
 def manage_requests():
@@ -1243,6 +1204,8 @@ def manage_requests():
         flash('You must be Help Desk to access this page.', 'error')
         return redirect(url_for('dashboard'))
     
+    user = session['user']
+
     try:
         connection = sql.connect(DATABASE)
         cursor = connection.cursor()
@@ -1265,7 +1228,9 @@ def manage_requests():
         if connection:
             connection.close() 
 
-    return render_template('manage_requests.html', requests=requests)
+    return render_template('manage_requests.html', 
+                           requests=requests,
+                           user=user)
 
 @app.route('/payment_methods', methods=['GET', 'POST'])
 def payment_methods():
@@ -1307,7 +1272,9 @@ def payment_methods():
     cards = cursor.fetchall()
     connection.close()
 
-    return render_template('payment_methods.html', cards=cards)
+    return render_template('payment_methods.html', 
+                           cards=cards,
+                           user=user)
 
 
 @app.route('/delete_card/<card_num>', methods=['POST'])
