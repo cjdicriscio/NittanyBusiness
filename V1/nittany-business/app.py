@@ -492,6 +492,9 @@ def cart():
 
     # Get cart from session
     cart = session.get('cart', [])
+    
+    for item in cart:
+        item['subtotal'] = float(item['price'].replace('$', '')) * float(item['quantity'])
 
     # ✅ Remove "$" and safely convert to float
     total_price = sum(float(item['price'].replace('$', '')) * int(item['quantity']) for item in cart)
